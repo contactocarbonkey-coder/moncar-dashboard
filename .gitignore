@@ -1,0 +1,20 @@
+# Output generado — se puede regenerar desde el script
+dashboard_live.html
+dashboard_dev.html
+
+# Archivos de datos (Excel) — no son código, cambian solos
+ARCHIVOS BASE/
+BACKUPS/
+
+# Archivos temporales de Excel
+~$*.xlsx
+~$*.xls
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Sistema
+.DS_Store
+Thumbs.db
