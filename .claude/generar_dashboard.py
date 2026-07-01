@@ -17,7 +17,9 @@ BASE_DIR    = DIR + r'\ARCHIVOS BASE'
 VENTAS_PATH = BASE_DIR + r'\VENTAS.xlsx'
 MC_PATH     = BASE_DIR + r'\STOCK_MONCAR.xlsx'
 RMH_PATH    = BASE_DIR + r'\STOCK_RMH.xlsx'
-OUT_PATH    = DIR + r'\dashboard_live.html'
+
+DEV_MODE    = '--dev' in sys.argv
+OUT_PATH    = DIR + (r'\dashboard_dev.html' if DEV_MODE else r'\dashboard_live.html')
 
 # ─── helpers ────────────────────────────────────────────────────────────────
 def load_wb(path, data_only=False):
@@ -258,9 +260,10 @@ def main():
     with open(OUT_PATH, 'w', encoding='utf-8') as f:
         f.write(html)
 
-    print(f"✓ Dashboard generado: {OUT_PATH}")
+    modo = "[DEV] " if DEV_MODE else ""
+    print(f"✓ {modo}Dashboard generado: {OUT_PATH}")
     if '--no-browser' not in sys.argv:
-        print("✓ Abriendo en el navegador...")
+        print(f"✓ Abriendo en el navegador...")
         webbrowser.open('file:///' + OUT_PATH.replace('\\', '/'))
 
 # ─── HTML TEMPLATE ────────────────────────────────────────────────────────────
