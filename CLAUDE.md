@@ -1,124 +1,165 @@
-# MONCAR RMH — Briefing del proyecto
+# MONCAR RMH — Índice de proyectos
 
-Proyecto de Franco: dashboard de análisis de ventas y control de stock para MONCAR RMH
-(empresa familiar de repuestos eléctricos para herramientas: carbones e interruptores).
+**Última actualización: 2026-09-25.**
+
+Franco tiene 3 proyectos MONCAR RMH. Este archivo es el mapa del **Dashboard** y el
+router hacia los otros dos.
+
+## Router — a dónde ir según la tarea
+
+| Proyecto | Estado | Carpeta / repo | Cómo se corre | Doc detallada |
+|---|---|---|---|---|
+| **Dashboard** (este) | Activo | raíz + `.claude/` | `abrir_dashboard_drive.bat` | este archivo → `HISTORIAL.md`, `REFERENCIA.md` |
+| **App remitos** | Activo | `remitos-app/` (repo git propio) | Vercel / `npm run dev` | `remitos-app/CLAUDE.md` |
+| **Página web / catálogo** | Activo (reactivado 2026-09-22) | `pagina-web/` | `desplegar.bat` | `pagina-web/CLAUDE.md` |
+
+Si la tarea es de **remitos**, leer `remitos-app/CLAUDE.md` primero — nada de eso vive
+acá. Si la tarea es de la **página web / catálogo**, leer `pagina-web/CLAUDE.md`
+primero — nada de eso vive acá tampoco.
 
 ---
+
+## Dashboard — qué es
+
+Dashboard de una sola página (HTML + JS) para análisis de ventas y control de stock de
+MONCAR RMH (empresa familiar argentina: carbones eléctricos "MONCAR", interruptores
+"RMH"). Es la fuente de ingresos principal de Franco. Un script Python lee los datos y
+los inyecta como JSON (`window.DATA`) dentro de un `TEMPLATE` HTML.
+
+## Estado actual — dos versiones del mismo dashboard
+
+Mismo `TEMPLATE`, distinta fuente de datos:
+
+| | **Drive (Google Sheets) — la que se usa** | Excel local — en evaluación, sin uso activo |
+|---|---|---|
+| Lanzador | `abrir_dashboard_drive.bat` | `abrir_dashboard.bat` |
+| Servidor | `.claude/servidor_drive.py` (puerto 8051) | `.claude/servidor.py` (puerto 8050) |
+| Generador | `.claude/generar_dashboard_drive.py` | `.claude/generar_dashboard.py` |
+| Fuente | 3 Google Sheets vía CSV público (gviz) | `ARCHIVOS BASE/*.xlsx` (openpyxl) |
+| Output | `dashboard_drive.html` | `dashboard_live.html` |
+
+Franco ya no tiene Office; carga todo en Google Sheets, así que en la práctica solo corre
+la versión Drive. **La decisión formal de cuál queda como definitiva sigue abierta** — no
+asumir que la Excel local se puede borrar.
+
+**Regla al tocar el `TEMPLATE`** (HTML/JS, lógica de negocio en JS): aplicar el mismo
+cambio en los dos generadores (`generar_dashboard_drive.py` y `generar_dashboard.py`) o
+se desincronizan. Algunas features nuevas (ventas manuales sin remito, fix de lectura
+doble) están **solo en la versión Drive** a propósito — ver `HISTORIAL.md`.
 
 ## Estructura de archivos
 
 ```
 claude MONCAR RMH/
-├── CLAUDE.md                   ← este archivo
-├── dashboard_live.html         ← dashboard generado (output)
-├── ARCHIVOS BASE/
-│   ├── VENTAS.xlsx             ← fuente principal de ventas y listas de precios
-│   ├── STOCK_MONCAR.xlsx       ← stock de carbones (341 productos)
-│   └── STOCK_RMH.xlsx          ← stock de interruptores (36 productos)
-└── .claude/
-    ├── generar_dashboard.py    ← script principal: lee Excel, genera HTML
-    └── servidor.py             ← servidor HTTP en puerto 8050; expone /refresh
+├── CLAUDE.md               ← este archivo (mapa + router)
+├── HISTORIAL.md            ← cambios pasados y pendientes resueltos
+├── REFERENCIA.md           ← detalle estable: hojas, fórmulas, columnas, páginas, JS
+├── .claude/
+│   ├── generar_dashboard_drive.py   ← ACTIVO: lee Sheets → dashboard_drive.html
+│   ├── servidor_drive.py            ← servidor 8051, expone /refresh y POST /lita/entregar
+│   ├── entregas_lita.py             ← ÚNICA escritura en Sheets: marca entregas a Lita
+│   ├── generar_dashboard.py         ← versión Excel local (sin uso activo)
+│   ├── servidor.py                  ← servidor 8050
+│   └── settings.local.json
+├── abrir_dashboard_drive.bat        ← ACTIVO
+├── abrir_dashboard.bat              ← versión Excel local
+├── dashboard_drive.html             ← output ACTIVO
+├── dashboard_live.html              ← output Excel local (gitignored)
+├── *_dev.html                       ← outputs de prueba (flag --dev), gitignored
+├── ARCHIVOS BASE/*.xlsx             ← fuente Excel local (gitignored)
+├── BACKUPS/                         ← backups de datos (gitignored)
+├── LP/LP 10 CARBONES 01.04.2026.xlsx  ← lista de precios, NO integrada al dashboard (pendiente)
+├── setup_stock_caba.gs              ← Apps Script hoja STOCK CABA de Andi — CONFIRMAR si sigue vivo
+├── remitos-app/                     ← proyecto hermano, repo git propio (ver su CLAUDE.md)
+└── _legacy/                         ← archivos sin uso confirmado (ver _legacy/LEEME.txt)
 ```
 
----
-
-## Cómo funciona el sistema
+## Cómo funciona (versión Drive)
 
 ```
-abrir_dashboard.bat → servidor.py (puerto 8050)
-                         ↓ al cargar o al clickear "Actualizar datos"
-                    generar_dashboard.py
-                         ↓ lee con openpyxl (load_wb con retry x3 para locks)
-                    VENTAS.xlsx + STOCK_MONCAR.xlsx + STOCK_RMH.xlsx
-                         ↓ inyecta JSON en variable TEMPLATE
-                    dashboard_live.html  (window.DATA = {...})
+abrir_dashboard_drive.bat → servidor_drive.py (8051)
+   ↓ al cargar o al clickear "Actualizar datos"
+generar_dashboard_drive.py
+   ↓ descarga cada hoja como CSV público (fetch_sheet_csv, retry x3)
+3 Google Sheets  →  mismo procesamiento y mismo TEMPLATE que el original
+   ↓
+dashboard_drive.html  (window.DATA = {...})
 ```
 
-`generar_dashboard.py` tiene todo el HTML como string `TEMPLATE`. Para modificar el
-dashboard, siempre editar `TEMPLATE` dentro de ese script y ejecutar para regenerar.
+`fetch_sheet_csv(id, hoja)` arma
+`https://docs.google.com/spreadsheets/d/{ID}/gviz/tq?tqx=out:csv&sheet={HOJA}`, la baja
+con `urllib` y la parsea con `csv`. Sin OAuth, sin service account. Números en formato
+argentino (`"10.298,15"` → `10298.15`, función `n()`); fechas `dd/mm/yyyy` → `yyyy-mm-dd`
+(`parse_fecha()`). Google calcula las fórmulas server-side, así que el CSV siempre trae
+valores ya resueltos.
 
----
+**IDs de los Google Sheets** (owner `contacto.carbonkey@gmail.com` = cuenta de Andi, no la de Franco):
 
-## VENTAS.xlsx — hojas clave
+| Archivo | ID | Hojas |
+|---|---|---|
+| VENTAS | `1K8wcDYl5E6hf7B-Go-R-3BPnCISNFKibnEV2C4AmfOE` | Ventas, LP MONCAR, LP RMH, Costos, Clientes |
+| STOCK_MONCAR | `1u9xG2uyeT3V8osBi9Qz0xofDCPmFmhOXlu85c1OIEQ8` | Productos, Movimientos, Stock |
+| STOCK_RMH | `1Msl0CC5abCoIaM0MpeCtYOoHVHI0mjPlfElc5x8ytJE` | Productos, Movimientos, Stock |
 
-- **Ventas**: filas 2–761. Cols: REMITO, VENDEDOR, FECHA, LINEA, COD, CANTIDAD, CLIENTE,
-  COMISION, PRECIO UNIT (fórmula), SUBTOTAL (manual), COMENTARIOS, CMV, MARGEN,
-  MARCA, TIPO_CLI, ZONA, LOCALIDAD, PROVINCIA, DESC
-- **LP MONCAR**: lista de precios solo para productos MONCAR (CF, CC, CE). Fila 3 = headers,
-  datos desde fila 4. Columna E = precio vigente.
-- **LP RMH**: lista de precios para productos RM. Cols: A=COD, B=EMPRESA, C=MARCA,
-  D=DESCRIPCION, E=Precio anterior, F=Vigencia Abr-26 (precios nuevos desde abril 2026).
-- **Costos** y **Clientes**: datos auxiliares.
+**Requisito crítico**: los 3 Sheets tienen que quedar en "Cualquiera con el enlace -
+Lector". Si Franco los pasa a privado, el script Drive deja de leerlos y falla (es CSV
+público, no hay login de por medio).
 
-**Fórmula PRECIO UNIT** (col I de Ventas, filas 2–761):
-```
-=IF(TRIM(E2)="","",IF(LEFT(TRIM(E2),2)="RM",
-  IFERROR(IF(C2>=DATE(2026,4,1),INDEX('LP RMH'!$F:$F,MATCH(TRIM(E2),'LP RMH'!$A:$A,0)),
-                                 INDEX('LP RMH'!$E:$E,MATCH(TRIM(E2),'LP RMH'!$A:$A,0))),0),
-  IFERROR(INDEX('LP MONCAR'!$E:$E,MATCH(TRIM(E2),'LP MONCAR'!$A:$A,0)),0)))
-```
+**Excepción de escritura (2026-09-25)**: el botón "Entregar" de la tarjeta **Mercadería
+Lita** (Overview) escribe en `STOCK_MONCAR!Movimientos` (CONFIRMACIÓN → Entregado +
+FECHA ENTREGA) vía `entregas_lita.py`, con la cuenta de servicio de `remitos-app` (lee
+`remitos-app/.env.local`; requiere `pip install google-auth`). Detalle en `REFERENCIA.md`.
 
----
+## Gotchas vigentes
 
-## Dashboard — páginas disponibles
+- **`servidor*.py` carga el generador como módulo una sola vez al arrancar.** Si editás
+  el generador con el servidor corriendo, reiniciá el servidor.
+- **Tocar el `TEMPLATE` = editar los dos generadores** (`_drive` y el original).
+- **El dashboard lee las hojas Stock por posición de columna (`row[N]`), no por nombre.**
+  Si en `remitos-app` se agrega una columna a la hoja `Stock` de STOCK_MONCAR/STOCK_RMH,
+  hay que actualizar los índices en `read_stock_mc()` / `read_stock_rmh()` de los dos
+  generadores o se lee el número equivocado en silencio. Índices actuales en `REFERENCIA.md`.
+- **Lectura CSV de Sheets (gviz) desalinea las filas de instrucciones distinto según la
+  hoja.** Nunca asumir índice de fila fijo para el header: buscarlo por contenido. Casos
+  confirmados (`Movimientos`, `LP RMH`, `Costos`) en `REFERENCIA.md`.
+- **`read_ventas()` (solo versión Drive) pide la hoja `Ventas` dos veces y se queda con
+  la lectura más grande** — gviz puede devolver una respuesta truncada sin ningún error.
+  No quitar ese doble fetch.
+- **Las fórmulas de `Stock` deben leer `Movimientos` con rango abierto** (`$F$4:$F`, no
+  `$F$4:$F$922`): con rango cerrado, lo cargado debajo queda fuera del stock sin error.
+  Si se agregan columnas/fórmulas nuevas en `Stock`, usar rango abierto. Script de
+  corrección: `remitos-app/scripts/ampliar-rango-movimientos.ts`.
+- **`load_wb()` (solo versión Excel local)**: reintenta 3× con 2s de delay para saltar
+  locks de OneDrive. Si Excel tiene el archivo con lock exclusivo, hay que cerrarlo.
 
-| Página | Qué muestra |
-|--------|-------------|
-| Ventas | KPIs generales, evolución, top vendedores, desglose por línea |
-| Productos | Buscador + detalle por producto (KPIs, evolución dual-axis, top clientes) + tabla resumen |
-| Marcas | Buscador + detalle por marca (KPIs, evolución, top productos) + tabla resumen |
-| Clientes | Análisis por cliente |
-| Stock - MONCAR | Tabla de stock de carbones con alertas de reposición |
-| Stock - RMH | Tabla de stock de interruptores |
-| P&L | Estado de resultados (en desarrollo) |
+## Negocio — referencia rápida
 
-Filtros globales: fecha (desde/hasta mes), línea (MONCAR/RMH/todas), vendedor.
+- **MONCAR** = carbones, códigos CF/CC/CE, ~340 SKUs. **RMH** = interruptores, códigos RM, ~35 SKUs.
+- **Equipo**: Juli (hermana, jefa; volvió a vender el 24/08/2026), Franco (admin +
+  vendedor Escobar), Andi (vendedora CABA, stock propio), David (vendedor nuevo, stock
+  propio), Maxi (RMH + ventas de Lita en MONCAR, stock propio), Lita (clienta especial,
+  sus ventas las carga Maxi). "Juani" / "CABA" eran nombres viejos de Andi.
+- **Comisiones**: Andi 10% + fijo $400.000/mes (el fijo NO está en el P&L todavía); Maxi
+  y David 30%; Franco vendedor 15% o 30% según cliente; Franco admin 20% sobre
+  facturación del mes (SÍ está en el P&L).
+- Detalle completo de equipo, hojas, fórmulas y arquitectura de stock: **`REFERENCIA.md`**.
 
----
+## Pendientes abiertos
 
-## JS — estado global y funciones clave
 
-```javascript
-window.DATA          // JSON inyectado por Python: {ventas, stock_mc, stock_rmh, precios}
-const MC_ROWS        // window.DATA.stock_mc.rows
-const RMH_ROWS       // window.DATA.stock_rmh.rows
-let F                // filtros globales {desde, hasta, linea, vendedor}
-let PROD_SEL         // producto seleccionado en página Productos (null = todos)
-let MARCA_SEL        // marca seleccionada en página Marcas (null = todas)
-```
+- [ ] Decidir cuál dashboard queda como definitivo (Drive vs Excel local) o si conviven.
+- [ ] Fijo mensual de Andi ($400.000) no implementado en el P&L.
+- [ ] **Análisis de descuentos** (pedido de Franco): la hoja `Ventas` ya tiene
+      `DESCUENTO` ($) y `DESCUENTO_PCT` (%) cargados desde `remitos-app`. `SUBTOTAL` ya
+      viene neto, así que el P&L ya refleja el impacto; falta una **vista/tabla dedicada**
+      a mostrar el detalle del descuento por cliente/producto/vendedor. Es solo-lectura
+      sobre columnas que ya existen.
+- [ ] Formato condicional (verde/naranja/rojo) en la columna CANTIDAD de `Movimientos`
+      para señalar stock negativo. Las fórmulas viejas eran para Excel (separador `;`);
+      hay que reescribirlas para Sheets (`,`) si se retoma.
+- [ ] `LP 10 CARBONES 01.04.2026.xlsx` sigue sin integrarse al dashboard.
+- [ ] Confirmar si `setup_stock_caba.gs` sigue en uso (hoja STOCK CABA de Andi).
+- [ ] Productos en stock negativo tras el backfill de Juli (2026-09-07) — lista en
+      `remitos-app/CLAUDE.md`; Franco tiene que revisar conteo físico si le interesa.
 
-Funciones principales: `renderVentas()`, `renderProductos()`, `renderMarcas()`,
-`renderClientes()`, `renderStock(isMC)`, `renderPL()`.
-
----
-
-## Decisiones técnicas importantes
-
-- **load_wb()**: wrapper sobre openpyxl que lee en modo binario (BytesIO) con 3 reintentos
-  y delay de 2s entre intentos. Permite leer archivos aunque OneDrive los esté sincronizando.
-  Si el archivo está abierto en Excel con lock exclusivo, falla igual → cerrar Excel primero.
-
-- **LP split**: LP MONCAR y LP RMH son hojas separadas desde abril 2026 porque RMH tuvo
-  actualización de precios propia. La detección es `LEFT(TRIM(COD),2)="RM"`.
-
-- **servidor.py**: usa `importlib.util` para importar `generar_dashboard` como módulo.
-  Si se edita `generar_dashboard.py` con el servidor corriendo, hay que reiniciar el servidor
-  para que tome los cambios (el módulo se carga una sola vez).
-
----
-
-## Negocio — contexto rápido
-
-- **MONCAR**: carbones eléctricos. Códigos CF/CC/CE. 341 SKUs.
-- **RMH**: interruptores. Códigos RM. 36 SKUs.
-- **Vendedores**: Franco (admin + vendedor zona Escobar), Juani (30% comisión, stock propio),
-  Maxi (30% comisión, stock propio + gestiona ventas de Lita).
-- **Comisión Franco admin**: 20% sobre facturación total — aún no implementada en P&L.
-
----
-
-## Dirección futura discutida
-
-- **Supabase** como reemplazo de Excel: en evaluación. Permitiría editar datos desde el HTML
-  directamente (browser → Supabase API, sin servidor Python de por medio para los datos).
-  Pendiente decisión de Franco sobre si migrar y por dónde empezar.
+Pendientes ya resueltos y su detalle: **`HISTORIAL.md`**.
