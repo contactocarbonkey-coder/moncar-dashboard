@@ -91,6 +91,49 @@ encontradas, 17 tenían `CANTIDAD=0` (error de carga) → quedan 56, reconstruid
 
 ## Historial reciente
 
+### 2026-09-22 a 2026-09-28 — Página web: fotos reales, rediseño y dominio propio en vivo
+
+Después de la reactivación del 22/09 (ver entrada de abajo), una semana de trabajo
+sobre `pagina-web/` que la dejó publicada en `moncar-rmh.com.ar`. Detalle completo y
+actualizado en `pagina-web/CLAUDE.md` — acá solo el resumen de qué pasó y por qué:
+
+1. **Fotos reales de producto**: se encontraron y procesaron dos PDF que Franco tenía
+   (`CATALOGO CARBONES MONCAR (1) (2).pdf` y `LISTA DE PRECIO RMH AGOSTO 2026.pdf`).
+   Scripts nuevos `extraer_imagenes_catalogo.py` / `extraer_imagenes_rmh.py` matchean
+   cada foto embebida en el PDF con su código de producto por posición (layouts
+   distintos entre los dos PDF). Resultado: 322/340 fotos MONCAR + 39/39 fotos RMH.
+2. **Stock oculto**: a pedido de Franco, se pausó por completo (badge, filtro "solo
+   stock", botón deshabilitado) — el catálogo ahora muestra todo como pedible sin
+   importar disponibilidad real. El dato se sigue leyendo, solo no se usa en el JS.
+3. **Rediseño completo** inspirado en la web de Dowen Paggio (que Franco mandó de
+   referencia): tipografía Oswald, paleta negro/gris/naranja, íconos de categoría reales
+   (no emoji) sacados de Material Symbols/MDI/Game-Icons vía Iconify (embebidos como SVG
+   fijo, sin dependencia externa en runtime), selector de cantidad en cada producto,
+   paginación "Cargar más" (por performance, ya que las fotos reales pesan bastante más
+   que los íconos SVG viejos), y ruteo liviano por URL (`#productos/cat/...`) para que
+   el botón atrás y los links compartidos funcionen.
+4. **WhatsApp con identificación de zona**: Franco aclaró que el negocio sí rutea
+   pedidos por zona a distintos vendedores (esto no era el capricho ficticio de la
+   versión vieja que se había sacado el 22/09 — es una necesidad real). Se encontraron
+   los números reales del equipo en el PDF de RMH (Franco, Andrés Castagna/Andi, David
+   Wu, Maximiliano Ojeda/Maxi) y se armó el mecanismo (formulario nombre/zona antes de
+   abrir WhatsApp), pero **falta que Franco pase el mapa de qué zona corresponde a
+   quién** — hoy todo cae en Franco por default.
+5. **Dominio propio, `moncar-rmh.com.ar`, publicado 2026-09-28**: registrado en nic.ar
+   (a nombre de Juli/Maria Julieta Montero) → delegado a nameservers de Cloudflare (por
+   falta de editor de registros A/CNAME en el panel de nic.ar) → Cloudflare apunta a
+   Vercel. **Contratiempo de 3 días**: la primera carga de nameservers en nic.ar (24/09)
+   no se confirmó con el botón "EJECUTAR CAMBIOS" — quedó guardado en la UI pero el
+   WHOIS real nunca tuvo los nameservers, sin ningún error visible. Se detectó
+   consultando `whois.nic.ar` directo (puerto 43) en vez de confiar en el panel, y se
+   resolvió recargando y confirmando. **Corrección importante**: el `.com.ar` **no
+   resultó gratis** como se asumía al principio — el circuito oficial de nic.ar pidió
+   pago igual.
+6. **Vercel se quedó en plan Hobby** (no Pro) — decisión de Franco: por ahora es "uso
+   personal, para probar la funcionalidad", no lo está mandando a clientes reales
+   todavía. Pendiente pasar a Pro antes de usarlo en serio (ver nota de uso comercial en
+   `pagina-web/CLAUDE.md`).
+
 ### 2026-09-22 — Reactivación de la página web / catálogo
 
 Franco decidió retomar el catálogo público (`_legacy/pagina-web/` → `pagina-web/`,

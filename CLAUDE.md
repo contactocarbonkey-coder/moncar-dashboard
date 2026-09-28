@@ -1,6 +1,6 @@
 # MONCAR RMH — Índice de proyectos
 
-**Última actualización: 2026-09-25.**
+**Última actualización: 2026-09-28.**
 
 Franco tiene 3 proyectos MONCAR RMH. Este archivo es el mapa del **Dashboard** y el
 router hacia los otros dos.
@@ -11,7 +11,7 @@ router hacia los otros dos.
 |---|---|---|---|---|
 | **Dashboard** (este) | Activo | raíz + `.claude/` | `abrir_dashboard_drive.bat` | este archivo → `HISTORIAL.md`, `REFERENCIA.md` |
 | **App remitos** | Activo | `remitos-app/` (repo git propio) | Vercel / `npm run dev` | `remitos-app/CLAUDE.md` |
-| **Página web / catálogo** | Activo (reactivado 2026-09-22) | `pagina-web/` | `desplegar.bat` | `pagina-web/CLAUDE.md` |
+| **Página web / catálogo** | Activo, en vivo en `moncar-rmh.com.ar` desde 2026-09-28 | `pagina-web/` | ver `pagina-web/CLAUDE.md` | `pagina-web/CLAUDE.md` |
 
 Si la tarea es de **remitos**, leer `remitos-app/CLAUDE.md` primero — nada de eso vive
 acá. Si la tarea es de la **página web / catálogo**, leer `pagina-web/CLAUDE.md`
