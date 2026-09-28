@@ -1,0 +1,20 @@
+Archivos sin uso confirmado. No borrar ni tocar sin consultar a Franco.
+Movidos acá el 2026-09-10 para despejar la raíz del proyecto.
+
+Contenido:
+
+  (pagina-web/ salió de acá el 2026-09-22 — Franco decidió reactivarla como
+  catálogo/carta de presentación. Ahora vive en la raíz del proyecto, ver
+  pagina-web/CLAUDE.md.)
+
+  equivalencias/     generar_equivalencias.py + EQUIVALENCIAS_MONCAR.xlsx.
+                     Propósito nunca confirmado. Nadie los usa hoy.
+
+  CONTEXTO_PROYECTO.md   Versión vieja (2026-06-02) del briefing del proyecto.
+                         Reemplazado por CLAUDE.md + HISTORIAL.md + REFERENCIA.md.
+
+  RENDICION.xlsx     Sin uso confirmado.
+  VENTAS_TEST.xlsx   Archivo de prueba viejo.
+
+Nota: las copias de generar_sitio.py y generar_equivalencias.py que vivían en
+.claude/ se eliminaron del árbol pero quedan en el historial de git si hicieran falta.

@@ -7,7 +7,18 @@
       "Bash(python patch_stock_rmh_tipos.py)",
       "Read(//c/Users/franc/OneDrive/Documentos/FRANCO/Claude/Claude code/**)",
       "Bash(python -)",
-      "Bash(2>&1)"
+      "Bash(2>&1)",
+      "Bash(npm run *)",
+      "Bash(git push *)",
+      "Bash(tasklist //FI \"IMAGENAME eq python.exe\" //FO CSV)",
+      "Bash(netstat -ano)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(curl -s -X POST \"https://moncar-rmh-remitos.vercel.app/api/auth/login\" -H \"Content-Type: application/json\" -d '{\"nombre\":\"Franco admin\",\"pin\":\"1078\"}')",
+      "Bash(curl -s -w \"\\\\nHTTP:%{http_code}\\\\n\" -X POST \"https://moncar-rmh-remitos.vercel.app/api/auth/login\" -H \"Content-Type: application/json\" -d '{\"nombre\":\"Franco admin\",\"pin\":\"1078\"}')",
+      "Bash(curl -s -w \"\\\\nHTTP:%{http_code}\\\\n\" \"https://moncar-rmh-remitos.vercel.app/login\" -o /dev/null)",
+      "Bash(powershell -Command \"Get-NetTCPConnection -LocalPort 3000 -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique\")",
+      "Bash(taskkill //PID 25368 //F)"
     ]
   }
 }

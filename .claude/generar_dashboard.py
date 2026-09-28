@@ -66,11 +66,44 @@ def read_ventas(path):
 
     # ── Ventas sheet
     ws = wb["Ventas"] if "Ventas" in wb.sheetnames else wb.active
+
+    # Mapeo por nombre de columna — robusto ante reordenamientos futuros
+    raw_headers = [s(c.value).replace('\n', ' ').upper() for c in ws[1]]
+    def ci(name):
+        for i, h in enumerate(raw_headers):
+            if h == name.upper():
+                return i
+        return None
+    iREMITO    = ci('N° REMITO')   or 0
+    iVENDEDOR  = ci('VENDEDOR')    or 1
+    iFECHA     = ci('FECHA')       or 2
+    iLINEA     = ci('LINEA') or ci('LÍNEA') or 3
+    iCOD       = ci('COD')         or 4
+    iCANTIDAD  = ci('CANTIDAD')    or 5
+    iCLIENTE   = ci('CLIENTE')     or 6
+    iCOMIS     = ci('COMIS%')      or 7
+    iPRECIO    = ci('PRECIO UNIT') or 8
+    iSUBTOTAL  = ci('SUBTOTAL')    or 9
+    iMES       = ci('AÑO-MES')     or 10
+    iCOMENT    = ci('COMENTARIOS') or 11
+    iCMV       = ci('CMV')         or 12
+    iMARGEN    = ci('MARGEN')      or 13
+    iMARCA     = ci('MARCA')       or 14
+    iTIPO      = ci('TIPO CLIENTE') or 15
+    iZONA      = ci('ZONA')        or 16
+    iLOCALIDAD = ci('LOCALIDAD')   or 17
+    iPROVINCIA = ci('PROVINCIA')   or 18
+    iDESC      = ci('DESCRIPCION') or 19
+    # Columnas nuevas (2026-09) — sin posicion de respaldo fija porque no
+    # existian antes; si no estan (Sheet/Excel viejo) quedan en None.
+    iCOBRADO   = ci('COBRADO_EN_MES')
+    iMESCOBRO  = ci('MES_COBRO')
+
     raw = []
     _empty_streak = 0
     for row in ws.iter_rows(min_row=2, values_only=True):
-        # Saltar filas vacías rápidamente (Excel suele tener miles de filas formateadas vacías)
-        if row[0] is None and (len(row) <= 9 or row[9] is None):
+        # Saltar filas vacías rápidamente
+        if row[iREMITO] is None and (len(row) <= iSUBTOTAL or row[iSUBTOTAL] is None):
             _empty_streak += 1
             if _empty_streak > 20:
                 break
@@ -78,34 +111,41 @@ def read_ventas(path):
         _empty_streak = 0
         if not row or len(row) < 11:
             continue
-        REMITO    = s(row[0])
-        VENDEDOR  = s(row[1])
-        # FECHA
-        fecha_raw = row[2]
+        REMITO    = s(row[iREMITO])
+        VENDEDOR  = s(row[iVENDEDOR])
+        fecha_raw = row[iFECHA]
         if isinstance(fecha_raw, datetime):
             FECHA = fecha_raw.strftime("%Y-%m-%d")
         else:
             FECHA = s(fecha_raw)
-        LINEA_raw = s(row[3])
-        COD       = s(row[4])
-        # Índices reales verificados contra el archivo (no hay columna TIPO separada)
-        CANTIDAD  = n(row[5])
-        CLIENTE   = s(row[6])
-        com_raw   = n(row[7])
+        LINEA_raw = s(row[iLINEA])
+        COD       = s(row[iCOD])
+        CANTIDAD  = n(row[iCANTIDAD])
+        CLIENTE   = s(row[iCLIENTE])
+        com_raw   = n(row[iCOMIS])
         COMISION  = com_raw if 0 < com_raw <= 1 else 0.30
-        PRECIO    = n(row[8])
-        SUBTOTAL  = n(row[9])
-        MES       = s(row[10])
-        COMENTARIOS = s(row[11]) if len(row) > 11 else ""
-        CMV       = n(row[12]) if len(row) > 12 else 0.0
-        MARGEN    = n(row[13]) if len(row) > 13 else 0.0
-        MARCA     = s(row[14]) if len(row) > 14 else ""
-        TIPO_CLI  = s(row[15]) if len(row) > 15 else ""
-        ZONA      = s(row[16]) if len(row) > 16 else ""
-        LOCALIDAD = s(row[17]) if len(row) > 17 else ""
-        PROVINCIA = s(row[18]) if len(row) > 18 else ""
-        _desc_raw = s(row[19]) if len(row) > 19 else ""
+        PRECIO    = n(row[iPRECIO])
+        SUBTOTAL  = n(row[iSUBTOTAL])
+        MES       = s(row[iMES])
+        COMENTARIOS = s(row[iCOMENT]) if len(row) > iCOMENT else ""
+        CMV       = n(row[iCMV])      if len(row) > iCMV    else 0.0
+        MARGEN    = n(row[iMARGEN])   if len(row) > iMARGEN else 0.0
+        MARCA     = s(row[iMARCA])    if len(row) > iMARCA  else ""
+        TIPO_CLI  = s(row[iTIPO])     if len(row) > iTIPO   else ""
+        ZONA      = s(row[iZONA])     if len(row) > iZONA   else ""
+        LOCALIDAD = s(row[iLOCALIDAD]) if len(row) > iLOCALIDAD else ""
+        PROVINCIA = s(row[iPROVINCIA]) if len(row) > iPROVINCIA else ""
+        _desc_raw = s(row[iDESC])     if len(row) > iDESC   else ""
         DESC      = "" if _desc_raw.startswith('DESCRIPCION') else _desc_raw
+
+        # Vista financiera (rendicion): mes en que esa linea realmente se
+        # cobra/liquida, separado del mes en que se vendio (MES, arriba).
+        # Si no esta tildado "cobrado en el mes" y hay un mes cargado, se usa
+        # ese; si no, se asume cobrado el mismo mes de la venta — cubre tanto
+        # el caso normal (tildado) como remitos viejos sin este dato.
+        _cobrado_txt  = s(row[iCOBRADO])  if iCOBRADO  is not None and len(row) > iCOBRADO  else ""
+        _mescobro_txt = s(row[iMESCOBRO]) if iMESCOBRO is not None and len(row) > iMESCOBRO else ""
+        MES_COBRO = _mescobro_txt if _cobrado_txt.upper() == 'NO' and re.match(r'^\d{4}-\d{2}$', _mescobro_txt) else MES
 
         # Filters
         if SUBTOTAL <= 0:
@@ -125,7 +165,7 @@ def read_ventas(path):
             'REMITO': REMITO, 'VENDEDOR': VENDEDOR, 'FECHA': FECHA,
             'LINEA': LINEA, 'COD': COD,
             'CANTIDAD': CANTIDAD, 'CLIENTE': CLIENTE, 'COMISION': COMISION,
-            'PRECIO': PRECIO, 'SUBTOTAL': SUBTOTAL, 'MES': MES,
+            'PRECIO': PRECIO, 'SUBTOTAL': SUBTOTAL, 'MES': MES, 'MES_COBRO': MES_COBRO,
             'COMENTARIOS': COMENTARIOS, 'CMV': CMV, 'MARGEN': MARGEN,
             'MARCA': MARCA, 'TIPO_CLI': TIPO_CLI, 'ZONA': ZONA,
             'LOCALIDAD': LOCALIDAD, 'PROVINCIA': PROVINCIA, 'DESC': DESC,
@@ -149,7 +189,7 @@ def read_stock_mc(path):
                 cod = str(row[0]).strip()
                 base[cod] = {
                     'NO_EMB': n(row[3]), 'EMB_DEP': n(row[4]),
-                    'PREM_DEP': n(row[5]), 'JUANI': n(row[6]),
+                    'PREM_DEP': n(row[5]), 'CABA': n(row[6]),
                 }
 
     ws = wb["Stock"] if "Stock" in wb.sheetnames else wb.active
@@ -167,26 +207,30 @@ def read_stock_mc(path):
             sin_cache += 1
             b = base[COD]
             no_emb_v  = b['NO_EMB'];  emb_dep_v = b['EMB_DEP']
-            prem_dep_v = b['PREM_DEP']; juani_v  = b['JUANI']
-            vendible_v = emb_dep_v + prem_dep_v + juani_v
+            prem_dep_v = b['PREM_DEP']; caba_v   = b['CABA']
+            vendible_v = emb_dep_v + prem_dep_v + caba_v
             total_v    = no_emb_v + vendible_v
         else:
             no_emb_v   = n(no_emb);   emb_dep_v  = n(emb_dep)
             prem_dep_v = n(row[4]) if len(row) > 4 else 0
-            juani_v    = n(row[5]) if len(row) > 5 else 0
-            vendible_v = n(row[6]) if len(row) > 6 else 0
-            total_v    = n(row[7]) if len(row) > 7 else 0
+            caba_v     = n(row[5]) if len(row) > 5 else 0
+            # OJO col.6 (0-based) es 'STOCK DAVID' desde 2026-09 (la app de
+            # remitos la agrego al lado de STOCK CABA) — este dashboard no
+            # muestra el stock de David, solo hay que saltearla para no leer
+            # VENDIBLE/TOTAL/PREST/DEBO en la posicion vieja.
+            vendible_v = n(row[7]) if len(row) > 7 else 0
+            total_v    = n(row[8]) if len(row) > 8 else 0
         rows.append({
             'COD': COD,
             'MARCA':    s(row[1]) if len(row) > 1 else "",
             'NO_EMB':   no_emb_v,
             'EMB_DEP':  emb_dep_v,
             'PREM_DEP': prem_dep_v,
-            'JUANI':    juani_v,
+            'CABA':     caba_v,
             'VENDIBLE': vendible_v,
             'TOTAL':    total_v,
-            'PREST':    n(row[8]) if len(row) > 8 else 0,
-            'DEBO':     n(row[9]) if len(row) > 9 else 0,
+            'PREST':    n(row[9]) if len(row) > 9 else 0,
+            'DEBO':     n(row[10]) if len(row) > 10 else 0,
         })
     if sin_cache:
         print(f"  -> AVISO: {sin_cache} productos sin cache (aun no guardado en Excel) — usando valores base de Productos")
@@ -203,17 +247,20 @@ def read_stock_rmh(path):
         COD = s(row[0]) if len(row) > 0 else ""
         if not COD or not COD.startswith('RM'):
             continue
+        # OJO col.5 (0-based) es 'STOCK DAVID' desde 2026-09 (la app de
+        # remitos la agrego al lado de STOCK CABA) — este dashboard no
+        # muestra el stock de David, solo hay que saltearla.
         rows.append({
             'COD':     COD,
             'DESC':    s(row[1]) if len(row) > 1 else "",
             'NO_EMB':  n(row[2]) if len(row) > 2 else 0,
             'EMB_DEP': n(row[3]) if len(row) > 3 else 0,
             'CABA':    n(row[4]) if len(row) > 4 else 0,
-            'MAXI':    n(row[5]) if len(row) > 5 else 0,
-            'VENDIBLE':n(row[6]) if len(row) > 6 else 0,
-            'TOTAL':   n(row[7]) if len(row) > 7 else 0,
-            'PREST':   n(row[8]) if len(row) > 8 else 0,
-            'DEBO':    n(row[9]) if len(row) > 9 else 0,
+            'MAXI':    n(row[6]) if len(row) > 6 else 0,
+            'VENDIBLE':n(row[7]) if len(row) > 7 else 0,
+            'TOTAL':   n(row[8]) if len(row) > 8 else 0,
+            'PREST':   n(row[9]) if len(row) > 9 else 0,
+            'DEBO':    n(row[10]) if len(row) > 10 else 0,
         })
     print(f"  -> {len(rows)} productos RMH")
     return rows
@@ -425,6 +472,7 @@ tr.row-warn td{background:rgba(245,158,11,.06)}
   <div class="logo">MONCAR<span>+RMH</span></div>
   <div class="tabs">
     <button class="tab active" onclick="showPage('overview')">Overview</button>
+    <button class="tab" onclick="showPage('ventas')">Ventas</button>
     <button class="tab" onclick="showPage('productos')">Productos</button>
     <button class="tab" onclick="showPage('marcas')">Marcas</button>
     <button class="tab" onclick="showPage('clientes')">Clientes</button>
@@ -432,9 +480,10 @@ tr.row-warn td{background:rgba(245,158,11,.06)}
     <button class="tab" onclick="showPage('pl')">P&amp;L</button>
   </div>
   <div class="nav-right">
-    <select id="sel-vendedor" onchange="onVendedorChange()">
-      <option value="ALL">Todos los vendedores</option>
-    </select>
+    <div style="position:relative">
+      <button class="stk-btn active" id="vend-btn" onclick="toggleVendDD(event)" style="font-size:12px;padding:6px 12px">Todos los vendedores ▾</button>
+      <div id="vend-dd" onmousedown="event.preventDefault()" style="display:none;position:absolute;top:34px;right:0;background:var(--surface);border:1px solid var(--border);border-radius:6px;min-width:170px;max-height:260px;overflow-y:auto;z-index:200;box-shadow:0 4px 16px rgba(0,0,0,.3);padding:6px"></div>
+    </div>
     <div class="badge" id="badge-info">Cargando...</div>
     <button class="theme-btn" id="theme-toggle" onclick="toggleTheme()" title="Cambiar tema">☀</button>
   </div>
@@ -447,7 +496,8 @@ tr.row-warn td{background:rgba(245,158,11,.06)}
       <button class="period-tab active" data-mode="mes">Mes</button>
       <button class="period-tab" data-mode="3m">3 Meses</button>
       <button class="period-tab" data-mode="6m">6 Meses</button>
-      <button class="period-tab" data-mode="año">Año</button>
+      <button class="period-tab" data-mode="mat" title="Moving Annual Total: últimos 12 meses móviles">MAT</button>
+      <button class="period-tab" data-mode="año">YTD</button>
       <button class="period-tab" data-mode="custom">Personalizado</button>
     </div>
     <div class="period-nav">
@@ -598,6 +648,7 @@ tr.row-warn td{background:rgba(245,158,11,.06)}
   <!-- Tabla resumen (siempre visible, clickeable) -->
   <div class="card" style="margin-top:16px">
     <h3>Resumen de todos los productos del período</h3>
+    <div class="kpi-row cols4" id="prod-totales" style="margin-bottom:14px"></div>
     <div class="tbl-wrap"><table id="tbl-prod"><thead><tr>
       <th>#</th><th>CÓDIGO</th><th>DESCRIPCIÓN</th><th>LÍNEA</th>
       <th class="num">FACTURACIÓN</th><th class="num">UDS</th>
@@ -688,6 +739,7 @@ tr.row-warn td{background:rgba(245,158,11,.06)}
   <!-- Tabla resumen (siempre visible, clickeable) -->
   <div class="card" style="margin-top:16px">
     <h3>Resumen por Marca</h3>
+    <div class="kpi-row cols4" id="marc-totales" style="margin-bottom:14px"></div>
     <div class="tbl-wrap"><table id="tbl-marc"><thead><tr>
       <th>#</th><th>MARCA</th><th class="num">FACTURACIÓN</th><th class="num">UDS</th><th class="num">MARGEN BRUTO</th><th class="num">% TOTAL</th>
     </tr></thead><tbody></tbody></table></div>
@@ -708,9 +760,38 @@ tr.row-warn td{background:rgba(245,158,11,.06)}
   </div>
   <div class="card">
     <h3>Detalle de Clientes</h3>
+    <div class="kpi-row cols4" id="cli-totales" style="margin-bottom:14px"></div>
     <div class="tbl-wrap"><table id="tbl-cli"><thead><tr>
       <th>#</th><th>CLIENTE</th><th class="num">FACTURACIÓN</th><th class="num">UDS</th><th class="num">% TOTAL</th><th>PROVINCIA</th>
     </tr></thead><tbody></tbody></table></div>
+  </div>
+</div>
+
+<div id="page-ventas" class="page">
+  <h2>Ventas — Detalle</h2>
+  <p style="font-size:12px;color:var(--muted);margin:-8px 0 14px">
+    El per&iacute;odo y la l&iacute;nea se filtran con los controles de arriba de todo. Ac&aacute; abajo pod&eacute;s
+    cruzar por vendedor, marca, cliente, zona o tipo de cliente — como armar una tabla din&aacute;mica a mano, pero solo.
+  </p>
+  <div class="card" style="margin-bottom:14px">
+    <div id="vdet-filters" style="display:flex;align-items:flex-start;gap:18px;flex-wrap:wrap"></div>
+  </div>
+  <div class="card">
+    <div class="kpi-row cols4" id="vdet-totales" style="margin-bottom:14px"></div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+      <input id="vdet-search" type="text" placeholder="Buscar por cliente, c&oacute;digo, marca o descripci&oacute;n..."
+        oninput="renderVentasDetalle()"
+        style="flex:1;min-width:220px;background:var(--surface2);border:1px solid var(--border2);color:var(--text);
+          font-family:inherit;font-size:12px;padding:7px 12px;border-radius:6px;outline:none">
+      <span id="vdet-count" style="font-size:12px;color:var(--muted);white-space:nowrap"></span>
+      <button class="stk-btn active" style="padding:6px 14px;font-size:12px" onclick="exportVentasCSV()">Descargar CSV</button>
+    </div>
+    <div class="tbl-wrap" style="max-height:65vh;overflow-y:auto">
+      <table id="vdet-table">
+        <thead><tr id="vdet-head"></tr></thead>
+        <tbody id="vdet-body"></tbody>
+      </table>
+    </div>
   </div>
 </div>
 
@@ -725,24 +806,43 @@ tr.row-warn td{background:rgba(245,158,11,.06)}
 
 <div id="page-pl" class="page">
   <h2>P&amp;L — Estado de Resultados</h2>
-  <div class="pills" id="pills-pl"></div>
-  <div class="grid-2">
-    <div class="card" id="pl-table-wrap">
-      <h3>Estado de Resultados</h3>
-      <div id="pl-table"></div>
+  <div class="stock-toggle">
+    <button class="stk-btn active" id="pl-btn-eco" onclick="togglePLModo('economica')">Económica</button>
+    <button class="stk-btn" id="pl-btn-fin" onclick="togglePLModo('financiera')">Financiera (Rendición)</button>
+  </div>
+
+  <div id="pl-economica-body">
+    <div class="pills" id="pills-pl"></div>
+    <div class="grid-2">
+      <div class="card" id="pl-table-wrap">
+        <h3>Estado de Resultados</h3>
+        <div id="pl-table"></div>
+      </div>
+      <div class="card">
+        <h3>Waterfall P&amp;L</h3>
+        <div class="chart-wrap" style="height:320px"><canvas id="ch-pl-wf"></canvas></div>
+      </div>
     </div>
-    <div class="card">
-      <h3>Waterfall P&amp;L</h3>
-      <div class="chart-wrap" style="height:320px"><canvas id="ch-pl-wf"></canvas></div>
+    <div class="card" style="margin-top:16px">
+      <h3>Facturación / CMV / Comisión mensual</h3>
+      <div class="chart-wrap" style="height:260px"><canvas id="ch-pl-stack"></canvas></div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <h3>Margen Bruto % mensual</h3>
+      <div class="chart-wrap" style="height:220px"><canvas id="ch-pl-mg"></canvas></div>
     </div>
   </div>
-  <div class="card" style="margin-top:16px">
-    <h3>Facturación / CMV / Comisión mensual</h3>
-    <div class="chart-wrap" style="height:260px"><canvas id="ch-pl-stack"></canvas></div>
-  </div>
-  <div class="card" style="margin-top:16px">
-    <h3>Margen Bruto % mensual</h3>
-    <div class="chart-wrap" style="height:220px"><canvas id="ch-pl-mg"></canvas></div>
+
+  <div id="pl-financiera-body" style="display:none">
+    <p style="font-size:12px;color:var(--muted);margin:-4px 0 14px">
+      Agrupado por el mes en que cada venta se cobra de verdad (no por cuando se vendió) —
+      lo que hay que cobrar y liquidar a cada vendedor este mes.
+    </p>
+    <div class="pills" id="pills-pl-fin"></div>
+    <div class="card" id="pl-fin-table-wrap">
+      <h3>Rendición del mes</h3>
+      <div id="pl-fin-table"></div>
+    </div>
   </div>
 </div>
 
@@ -757,7 +857,11 @@ const LP      = window.DATA.precios;
 
 // ── State ────────────────────────────────────────────────────────────────────
 let curPage = 'overview';
-const F = { vendedor:'ALL', linea:'ALL', pl:'ALL', stock:'mc' };
+// F.vendedores: Set de nombres seleccionados. Vacío = todos (sin filtrar).
+const F = { vendedores: new Set(), linea:'ALL', pl:'ALL', stock:'mc' };
+function applyVendedorFilter(rows) {
+  return F.vendedores.size === 0 ? rows : rows.filter(r => F.vendedores.has(r.VENDEDOR));
+}
 
 // ── Chart registry ────────────────────────────────────────────────────────────
 const charts = {};
@@ -793,8 +897,7 @@ function pctDiff(v) {
 
 // ── Filter helpers ────────────────────────────────────────────────────────────
 function filterVentas(page) {
-  let rows = V.raw;
-  if(F.vendedor !== 'ALL') rows = rows.filter(r => r.VENDEDOR === F.vendedor);
+  let rows = applyVendedorFilter(V.raw);
   const mes = F[page];
   if(mes && mes !== 'ALL') rows = rows.filter(r => r.MES === mes);
   return rows;
@@ -883,9 +986,7 @@ function lineOpts(filled=false) {
 // ── Pills builder ─────────────────────────────────────────────────────────────
 function mkPills(containerId, page) {
   const months = (function(){
-    let rows = V.raw;
-    if(F.vendedor !== 'ALL') rows = rows.filter(r => r.VENDEDOR === F.vendedor);
-    return [...new Set(rows.map(r=>r.MES))].sort();
+    return [...new Set(applyVendedorFilter(V.raw).map(r=>r.MES))].sort();
   })();
   const el = document.getElementById(containerId);
   if(!el) return;
@@ -936,30 +1037,32 @@ function periodLabel(mode, cur) {
   if(mode==='semana') { const[y,w]=cur.split('-W'); return `Semana ${w}, ${y}`; }
   if(mode==='3m') { const ms=lastNMonths(cur,3); return `${periodLabel('mes',ms[0])} – ${periodLabel('mes',ms[2])}`; }
   if(mode==='6m') { const ms=lastNMonths(cur,6); return `${periodLabel('mes',ms[0])} – ${periodLabel('mes',ms[5])}`; }
+  if(mode==='mat') { const ms=lastNMonths(cur,12); return `${periodLabel('mes',ms[0])} – ${periodLabel('mes',ms[11])}`; }
   if(mode==='custom') return PERIOD.cStart&&PERIOD.cEnd ? `${PERIOD.cStart} → ${PERIOD.cEnd}` : 'Personalizado';
   return cur;
 }
 
 function prevPer(mode,cur) {
-  if(mode==='mes'||mode==='3m'||mode==='6m') return prevMes(cur);
+  if(mode==='mes'||mode==='3m'||mode==='6m'||mode==='mat') return prevMes(cur);
   if(mode==='año')  return String(+cur-1);
   if(mode==='semana') { const[y,w]=cur.split('-W').map(Number); return w===1?`${y-1}-W52`:`${y}-W${String(w-1).padStart(2,'0')}`; }
   return cur;
 }
 function nextPer(mode,cur) {
-  if(mode==='mes'||mode==='3m'||mode==='6m') return nextMes(cur);
+  if(mode==='mes'||mode==='3m'||mode==='6m'||mode==='mat') return nextMes(cur);
   if(mode==='año')  return String(+cur+1);
   if(mode==='semana') { const[y,w]=cur.split('-W').map(Number); return w>=52?`${y+1}-W01`:`${y}-W${String(w+1).padStart(2,'0')}`; }
   return cur;
 }
 
 function rowsForPeriod(mode, cur, cStart, cEnd) {
-  const base = F.vendedor==='ALL' ? V.raw : V.raw.filter(r=>r.VENDEDOR===F.vendedor);
+  const base = applyVendedorFilter(V.raw);
   if(!cur && mode!=='custom') return base;
   if(mode==='mes')    return base.filter(r=>r.MES===cur);
   if(mode==='año')    return base.filter(r=>r.MES&&r.MES.startsWith(cur));
   if(mode==='3m')     { const ms=lastNMonths(cur,3); return base.filter(r=>ms.includes(r.MES)); }
   if(mode==='6m')     { const ms=lastNMonths(cur,6); return base.filter(r=>ms.includes(r.MES)); }
+  if(mode==='mat')    { const ms=lastNMonths(cur,12); return base.filter(r=>ms.includes(r.MES)); }
   if(mode==='semana') {
     const[wy,wn]=cur.split('-W').map(Number);
     return base.filter(r=>{
@@ -977,8 +1080,8 @@ function rowsForPeriod(mode, cur, cStart, cEnd) {
 // Filas del período inmediatamente anterior (siempre, independiente del dropdown comparar)
 function prevPeriodRows() {
   if(!PERIOD.current||PERIOD.mode==='custom') return null;
-  // Para 3m/6m: desplaza el fin del período N meses atrás
-  const n = PERIOD.mode==='3m'?3 : PERIOD.mode==='6m'?6 : 1;
+  // Para 3m/6m/mat: desplaza el fin del período N meses atrás
+  const n = PERIOD.mode==='3m'?3 : PERIOD.mode==='6m'?6 : PERIOD.mode==='mat'?12 : 1;
   let prevEnd = PERIOD.current;
   for(let i=0;i<n;i++) prevEnd = prevMes(prevEnd);
   return rowsForPeriod(PERIOD.mode, prevEnd, null, null);
@@ -990,7 +1093,7 @@ function compareRows() {
   if(PERIOD.compare==='prev_year') {
     if(PERIOD.mode==='mes') { const[y,m]=PERIOD.current.split('-'); return rowsForPeriod('mes',`${+y-1}-${m}`,null,null); }
     if(PERIOD.mode==='año') return rowsForPeriod('año',String(+PERIOD.current-1),null,null);
-    if(PERIOD.mode==='3m'||PERIOD.mode==='6m') {
+    if(PERIOD.mode==='3m'||PERIOD.mode==='6m'||PERIOD.mode==='mat') {
       const[y,m]=PERIOD.current.split('-').map(Number);
       return rowsForPeriod(PERIOD.mode,`${y-1}-${String(m).padStart(2,'0')}`,null,null);
     }
@@ -1033,7 +1136,7 @@ function bindPeriod() {
     PERIOD.mode=t.dataset.mode;
     const last = V.months.length>0 ? V.months[V.months.length-1] : null;
     if(PERIOD.mode==='mes')  PERIOD.current = last;
-    else if(PERIOD.mode==='3m'||PERIOD.mode==='6m') PERIOD.current = last;
+    else if(PERIOD.mode==='3m'||PERIOD.mode==='6m'||PERIOD.mode==='mat') PERIOD.current = last;
     else if(PERIOD.mode==='año') { const yrs=[...new Set(V.months.map(m=>m.split('-')[0]))].sort(); PERIOD.current=yrs[yrs.length-1]||null; }
     else if(PERIOD.mode==='semana') PERIOD.current=null;
     else PERIOD.current=null;
@@ -1102,8 +1205,7 @@ function renderOverview() {
   ].join('');
 
   // Gráficos — siempre sobre todos los meses (contexto histórico)
-  const allRowsBase = F.vendedor==='ALL' ? V.raw : V.raw.filter(r=>r.VENDEDOR===F.vendedor);
-  const allRows = applyLineaFilter(allRowsBase);
+  const allRows = applyLineaFilter(applyVendedorFilter(V.raw));
   const monthly  = getMonthly(allRows);
   const months   = Object.keys(monthly).sort();
 
@@ -1219,6 +1321,19 @@ function renderProductos() {
   const prodMap = _buildProdMap(rows);
   const sorted = Object.values(prodMap).sort((a,b)=>b.rev-a.rev);
   const totalRev = sorted.reduce((a,p)=>a+p.rev, 0);
+
+  // Totales del filtro actual (reacciona a período/línea/vendedor y al buscador de producto)
+  const totalesEl = document.getElementById('prod-totales');
+  if(totalesEl) {
+    const totalUds = sorted.reduce((a,p)=>a+p.uds, 0);
+    const prom = totalUds>0 ? totalRev/totalUds : 0;
+    totalesEl.innerHTML = [
+      kpi('Facturación filtrada', fmt(totalRev), `${sorted.length} producto${sorted.length===1?'':'s'}`, 'green'),
+      kpi('Unidades', fmtN(totalUds), 'en el filtro actual', 'blue'),
+      kpi('Precio Promedio', prom>0?fmt(prom):'—', 'ponderado por unidades', 'accent'),
+      kpi('Productos distintos', sorted.length, 'con ventas en el período', 'amber'),
+    ].join('');
+  }
 
   // Si producto seleccionado no tiene datos en el período, resetear
   if(PROD_SEL && !prodMap[PROD_SEL]) {
@@ -1462,6 +1577,19 @@ function renderMarcas() {
   const sorted = Object.values(marcaMap).sort((a,b)=>b.rev-a.rev);
   const totalRev = sorted.reduce((a,m)=>a+m.rev,0);
 
+  // Totales del filtro actual
+  const totalesEl = document.getElementById('marc-totales');
+  if(totalesEl) {
+    const totalUds = sorted.reduce((a,m)=>a+m.uds,0);
+    const totalCmv = sorted.reduce((a,m)=>a+m.cmv,0);
+    totalesEl.innerHTML = [
+      kpi('Facturación filtrada', fmt(totalRev), `${sorted.length} marca${sorted.length===1?'':'s'}`, 'green'),
+      kpi('Unidades', fmtN(totalUds), 'en el filtro actual', 'blue'),
+      kpi('Margen Bruto', fmt(totalRev-totalCmv), pct(totalRev>0?(totalRev-totalCmv)/totalRev:0), 'accent'),
+      kpi('Marcas distintas', sorted.length, 'con ventas en el período', 'amber'),
+    ].join('');
+  }
+
   // Si la marca seleccionada no tiene datos, resetear
   if(MARCA_SEL && !marcaMap[MARCA_SEL]) {
     MARCA_SEL = null;
@@ -1619,6 +1747,19 @@ function renderClientes() {
   const totalRev = sorted.reduce((a,c)=>a+c.rev,0);
   const top15 = sorted.slice(0,15);
 
+  // Totales del filtro actual
+  const totalesEl = document.getElementById('cli-totales');
+  if(totalesEl) {
+    const totalUds = sorted.reduce((a,c)=>a+c.uds,0);
+    const prom = totalUds>0 ? totalRev/totalUds : 0;
+    totalesEl.innerHTML = [
+      kpi('Facturación filtrada', fmt(totalRev), `${sorted.length} cliente${sorted.length===1?'':'s'}`, 'green'),
+      kpi('Unidades', fmtN(totalUds), 'en el filtro actual', 'blue'),
+      kpi('Precio Promedio', prom>0?fmt(prom):'—', 'ponderado por unidades', 'accent'),
+      kpi('Clientes distintos', sorted.length, 'con compras en el período', 'amber'),
+    ].join('');
+  }
+
   mkChart('ch-cli-rev', {
     type:'bar',
     data:{
@@ -1676,7 +1817,7 @@ function calcEmbolsado(sRows, salesMap, avgFactor, isMC) {
     const embDep = isMC ? r.EMB_DEP+r.PREM_DEP : r.EMB_DEP;
     const noEmb  = r.NO_EMB;
     const totalS = isMC
-      ? noEmb+r.EMB_DEP+r.PREM_DEP+r.JUANI
+      ? noEmb+r.EMB_DEP+r.PREM_DEP+r.CABA
       : noEmb+r.EMB_DEP+r.MAXI;
     const wEmb  = avgW>0 ? embDep/avgW : Infinity;
     const wMaxi = (!isMC&&avgW>0) ? (r.MAXI||0)/avgW : null;
@@ -1684,12 +1825,16 @@ function calcEmbolsado(sRows, salesMap, avgFactor, isMC) {
     const toEmb = avgM>0 ? Math.min(Math.max(0, Math.ceil(avgM*1.5-embDep)), noEmb) : 0;
     const buy   = isFinite(mTot)&&mTot<2;
     const buyQty= buy ? Math.max(0, Math.ceil(3*avgM-totalS)) : 0;
+    // Prioridad forzada: sin ventas registradas pero Maxi se quedó sin stock y hay
+    // sin-embolsar disponible en depósito — hay que embolsar igual, aunque no
+    // haya historial de ventas que lo justifique por velocidad.
+    const urgentSinVenta = !isMC && avgM<=0 && noEmb>0 && (r.MAXI||0)<=0;
     return {
       cod:r.COD, lbl:isMC?r.MARCA:r.DESC,
       embDep, noEmb, maxi:isMC?null:r.MAXI,
-      avgM, wEmb, wMaxi, mTot, toEmb, buy, buyQty
+      avgM, wEmb, wMaxi, mTot, toEmb, buy, buyQty, urgentSinVenta
     };
-  }).filter(Boolean).sort((a,b)=>a.wEmb-b.wEmb);
+  }).filter(Boolean).sort((a,b)=> (b.urgentSinVenta-a.urgentSinVenta) || (a.wEmb-b.wEmb) || (b.noEmb-a.noEmb));
 }
 
 function renderEmbolsadoCard(topEmb, isMC, topN) {
@@ -1698,10 +1843,11 @@ function renderEmbolsadoCard(topEmb, isMC, topN) {
   const rows = topEmb.map(r => {
     const maxiTd  = !isMC ? '<td class="num">'+fmtN(r.maxi||0)+'</td>' : '';
     const maxiSem = !isMC ? '<td class="num" style="color:'+urgColor(r.wMaxi)+'">'+urgLabel(r.wMaxi)+'</td>' : '';
-    const rc = r.wEmb<1 ? 'row-danger' : r.wEmb<3 ? 'row-warn' : '';
+    const rc = (r.urgentSinVenta || r.wEmb<1) ? 'row-danger' : r.wEmb<3 ? 'row-warn' : '';
+    const tag = r.urgentSinVenta ? ' <span style="color:var(--red);font-weight:600">· Maxi sin stock</span>' : '';
     return '<tr class="'+rc+'">'
       +'<td class="cod">'+r.cod+'</td>'
-      +'<td style="font-size:12px">'+(r.lbl||'—')+'</td>'
+      +'<td style="font-size:12px">'+(r.lbl||'—')+tag+'</td>'
       +'<td class="num">'+fmtN(r.embDep)+'</td>'
       +'<td class="num">'+fmtN(r.noEmb)+'</td>'
       +maxiTd
@@ -1738,8 +1884,283 @@ function renderEmbolsadoCard(topEmb, isMC, topN) {
     +'Rojo = urgente (&lt;1s) · naranja (&lt;2s) · amarillo (&lt;4s) · verde (≥4s). ∞ = sin ventas recientes.'
     +noteMaxi
     +' &nbsp;|&nbsp; <strong>Embolsar ahora</strong>: uds para alcanzar 1.5 meses en depósito (limitado por sin embolsar disponible).'
+    +(!isMC ? ' &nbsp;|&nbsp; <strong>Maxi sin stock</strong>: se prioriza igual aunque no haya ventas registradas, si hay sin embolsar disponible en depósito.' : '')
     +'</div>'
     +'</div>';
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// VENTAS — DETALLE (tabla filtrable estilo tabla dinámica)
+// ─────────────────────────────────────────────────────────────────────────────
+const VDET_COLS = [
+  ['FECHA','Fecha'], ['VENDEDOR','Vendedor'], ['LINEA','Línea'], ['COD','Código'],
+  ['DESC','Descripción'], ['CLIENTE','Cliente'], ['CANTIDAD','Cant.'],
+  ['PRECIO','Precio'], ['SUBTOTAL','Subtotal'], ['MARCA','Marca'], ['ZONA','Zona'], ['MES','Mes'],
+];
+let VDET_SORT = { col:'FECHA', dir:-1 };
+
+function setVdetSort(col) {
+  if(VDET_SORT.col===col) VDET_SORT.dir *= -1;
+  else VDET_SORT = { col, dir:1 };
+  renderVentasDetalle();
+}
+
+// ── Filtros cruzados de esta página: vendedor (compartido con F.vendedores) +
+//    marca / cliente / zona / tipo de cliente (propios de esta página) ────────
+const VDET_FILTERS = { MARCA:new Set(), CLIENTE:new Set(), ZONA:new Set(), TIPO_CLI:new Set() };
+const VDET_FILTER_DEFS = [
+  { key:'VENDEDOR', label:'Vendedor',     mode:'pills' },
+  { key:'MARCA',    label:'Marca',        mode:'dropdown' },
+  { key:'CLIENTE',  label:'Cliente',      mode:'dropdown' },
+  { key:'ZONA',     label:'Zona',         mode:'dropdown' },
+  { key:'TIPO_CLI', label:'Tipo cliente', mode:'dropdown' },
+];
+let VDET_DOM = {};
+
+function distinctValues(key) {
+  return [...new Set(V.raw.map(r=>r[key]).filter(Boolean))].sort();
+}
+function vdetActiveSet(key) {
+  return key==='VENDEDOR' ? F.vendedores : VDET_FILTERS[key];
+}
+
+function toggleVdetFilter(key, val) {
+  if(key==='VENDEDOR') { onVendCheck(val, !F.vendedores.has(val)); return; }
+  const set = VDET_FILTERS[key];
+  if(set.has(val)) set.delete(val); else set.add(val);
+  refreshVdetFilterUI();
+  renderPage(curPage);
+}
+
+function clearVdetFilters() {
+  Object.values(VDET_FILTERS).forEach(s=>s.clear());
+  F.vendedores.clear();
+  updateVendBtnLabel();
+  renderVendDD();
+  const search = document.getElementById('vdet-search');
+  if(search) search.value = '';
+  refreshVdetFilterUI();
+  renderPage(curPage);
+}
+
+function toggleVdetDD(key, e) {
+  e.stopPropagation();
+  const panel = VDET_DOM[key].panelEl;
+  const isOpen = panel.style.display==='block';
+  Object.values(VDET_DOM).forEach(d => { if(d.panelEl) d.panelEl.style.display='none'; });
+  panel.style.display = isOpen ? 'none' : 'block';
+}
+
+function buildVdetFilters() {
+  const wrap = document.getElementById('vdet-filters');
+  if(!wrap) return;
+  wrap.innerHTML = '';
+  VDET_DOM = {};
+
+  VDET_FILTER_DEFS.forEach(def => {
+    const opts = distinctValues(def.key);
+    const box = document.createElement('div');
+    const title = document.createElement('div');
+    title.textContent = def.label;
+    title.style.cssText = 'font-size:10px;font-weight:700;letter-spacing:.06em;color:var(--muted);text-transform:uppercase;margin-bottom:6px';
+    box.appendChild(title);
+
+    const entry = { pills: [] };
+
+    if(def.mode==='pills') {
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;max-width:280px';
+      opts.forEach(v => {
+        const p = document.createElement('span');
+        p.className = 'pill';
+        p.style.cursor = 'pointer';
+        p.textContent = v;
+        p.addEventListener('click', () => toggleVdetFilter(def.key, v));
+        row.appendChild(p);
+        entry.pills.push({ val:v, el:p });
+      });
+      box.appendChild(row);
+    } else {
+      const posWrap = document.createElement('div');
+      posWrap.style.position = 'relative';
+      const btn = document.createElement('button');
+      btn.className = 'pill';
+      btn.style.cursor = 'pointer';
+      btn.textContent = def.label + ' ▾';
+      btn.addEventListener('click', (e) => toggleVdetDD(def.key, e));
+      posWrap.appendChild(btn);
+
+      const panel = document.createElement('div');
+      panel.style.cssText = 'display:none;position:absolute;top:32px;left:0;background:var(--surface);'
+        + 'border:1px solid var(--border);border-radius:6px;width:220px;max-height:260px;overflow-y:auto;'
+        + 'z-index:200;box-shadow:0 4px 16px rgba(0,0,0,.3);padding:6px';
+
+      const search = document.createElement('input');
+      search.type = 'text'; search.placeholder = 'Buscar...';
+      search.style.cssText = 'width:100%;box-sizing:border-box;background:var(--surface2);border:1px solid var(--border2);'
+        + 'color:var(--text);font-family:inherit;font-size:12px;padding:5px 8px;border-radius:5px;outline:none;margin-bottom:6px';
+      const list = document.createElement('div');
+
+      opts.forEach(v => {
+        const lbl = document.createElement('label');
+        lbl.style.cssText = 'display:flex;align-items:center;gap:8px;padding:5px 6px;font-size:12px;cursor:pointer;border-radius:4px';
+        lbl.addEventListener('mouseover', () => { lbl.style.background='var(--surface2)'; });
+        lbl.addEventListener('mouseout',  () => { lbl.style.background=''; });
+        const chk = document.createElement('input');
+        chk.type = 'checkbox';
+        chk.addEventListener('change', () => toggleVdetFilter(def.key, v));
+        lbl.appendChild(chk);
+        lbl.appendChild(document.createTextNode(' '+v));
+        list.appendChild(lbl);
+        entry.pills.push({ val:v, el:lbl, chk });
+      });
+      search.addEventListener('input', () => {
+        const q = search.value.trim().toLowerCase();
+        entry.pills.forEach(({val,el}) => { el.style.display = (!q || val.toLowerCase().includes(q)) ? 'flex' : 'none'; });
+      });
+
+      panel.appendChild(search);
+      panel.appendChild(list);
+      posWrap.appendChild(panel);
+
+      const chips = document.createElement('div');
+      chips.style.cssText = 'display:flex;gap:4px;flex-wrap:wrap;margin-top:6px;max-width:220px';
+      posWrap.appendChild(chips);
+
+      box.appendChild(posWrap);
+      entry.panelEl = panel;
+      entry.chipsEl = chips;
+    }
+
+    wrap.appendChild(box);
+    VDET_DOM[def.key] = entry;
+  });
+
+  const clearPill = document.createElement('span');
+  clearPill.className = 'pill';
+  clearPill.style.cssText = 'cursor:pointer;border-style:dashed;align-self:flex-end';
+  clearPill.textContent = '✕ Limpiar filtros';
+  clearPill.addEventListener('click', clearVdetFilters);
+  wrap.appendChild(clearPill);
+
+  document.addEventListener('click', () => {
+    Object.values(VDET_DOM).forEach(d => { if(d.panelEl) d.panelEl.style.display='none'; });
+  });
+
+  refreshVdetFilterUI();
+}
+
+function refreshVdetFilterUI() {
+  VDET_FILTER_DEFS.forEach(def => {
+    const set = vdetActiveSet(def.key);
+    const entry = VDET_DOM[def.key];
+    if(!entry) return;
+    if(def.mode==='pills') {
+      entry.pills.forEach(({val,el}) => el.classList.toggle('active', set.has(val)));
+    } else {
+      entry.pills.forEach(({val,chk}) => { chk.checked = set.has(val); });
+      entry.chipsEl.innerHTML = '';
+      set.forEach(val => {
+        const chip = document.createElement('span');
+        chip.className = 'pill active';
+        chip.style.cssText = 'font-size:11px;padding:3px 8px;cursor:pointer';
+        chip.textContent = val + ' ✕';
+        chip.addEventListener('click', () => toggleVdetFilter(def.key, val));
+        entry.chipsEl.appendChild(chip);
+      });
+    }
+  });
+}
+
+function vdetFilteredRows() {
+  const q = (document.getElementById('vdet-search')?.value||'').trim().toLowerCase();
+  let rows = rowsFiltered();
+  ['MARCA','CLIENTE','ZONA','TIPO_CLI'].forEach(key => {
+    const set = VDET_FILTERS[key];
+    if(set.size>0) rows = rows.filter(r => set.has(r[key]));
+  });
+  if(q) {
+    rows = rows.filter(r =>
+      (r.CLIENTE||'').toLowerCase().includes(q) ||
+      (r.COD||'').toLowerCase().includes(q) ||
+      (r.MARCA||'').toLowerCase().includes(q) ||
+      (r.DESC||'').toLowerCase().includes(q)
+    );
+  }
+  const {col,dir} = VDET_SORT;
+  const numeric = col==='CANTIDAD'||col==='PRECIO'||col==='SUBTOTAL';
+  return rows.slice().sort((a,b) => {
+    const av=a[col], bv=b[col];
+    if(numeric) return (av-bv)*dir;
+    return String(av||'').localeCompare(String(bv||''))*dir;
+  });
+}
+
+function renderVentasDetalle() {
+  if(VDET_DOM.VENDEDOR) refreshVdetFilterUI();
+  const rows = vdetFilteredRows();
+
+  // Totales del filtro actual (período/línea/vendedor globales + los propios de esta página)
+  const totalesEl = document.getElementById('vdet-totales');
+  if(totalesEl) {
+    const totalFact = rows.reduce((a,r)=>a+r.SUBTOTAL, 0);
+    const totalUds  = rows.reduce((a,r)=>a+r.CANTIDAD, 0);
+    const prom = totalUds>0 ? totalFact/totalUds : 0;
+    totalesEl.innerHTML = [
+      kpi('Facturación filtrada', fmt(totalFact), `${rows.length} fila${rows.length===1?'':'s'}`, 'green'),
+      kpi('Unidades', fmtN(totalUds), 'en el filtro actual', 'blue'),
+      kpi('Precio Promedio', prom>0?fmt(prom):'—', 'ponderado por unidades', 'accent'),
+      kpi('Filas', fmtN(rows.length), 'líneas de venta', 'amber'),
+    ].join('');
+  }
+
+  const head = VDET_COLS.map(([key,label]) => {
+    const arrow = VDET_SORT.col===key ? (VDET_SORT.dir===1?' ▲':' ▼') : '';
+    return `<th style="cursor:pointer;user-select:none" onclick="setVdetSort('${key}')">${label}${arrow}</th>`;
+  }).join('');
+  document.getElementById('vdet-head').innerHTML = head;
+
+  const body = rows.map(r => `<tr>`
+    + `<td>${r.FECHA||''}</td>`
+    + `<td>${r.VENDEDOR||''}</td>`
+    + `<td>${r.LINEA||''}</td>`
+    + `<td class="cod">${r.COD||''}</td>`
+    + `<td style="font-size:12px">${truncate(r.DESC,40)}</td>`
+    + `<td style="font-size:12px">${r.CLIENTE||''}</td>`
+    + `<td class="num">${fmtN(r.CANTIDAD)}</td>`
+    + `<td class="num">${fmt(r.PRECIO)}</td>`
+    + `<td class="num">${fmt(r.SUBTOTAL)}</td>`
+    + `<td style="font-size:12px">${r.MARCA||''}</td>`
+    + `<td style="font-size:12px">${r.ZONA||''}</td>`
+    + `<td>${r.MES||''}</td>`
+    + `</tr>`).join('');
+  document.getElementById('vdet-body').innerHTML = body || '<tr><td colspan="12" class="empty">Sin resultados con estos filtros.</td></tr>';
+
+  document.getElementById('vdet-count').textContent = `${rows.length} fila${rows.length===1?'':'s'}`;
+}
+
+function exportVentasCSV() {
+  const rows = vdetFilteredRows();
+  const bom = String.fromCharCode(0xFEFF);
+  const header = VDET_COLS.map(([,label])=>label);
+  const lines = [header.join(';')];
+  rows.forEach(r => {
+    lines.push(VDET_COLS.map(([key]) => {
+      let v = r[key];
+      if(key==='CANTIDAD') v = Math.round(v);
+      if(key==='PRECIO'||key==='SUBTOTAL') v = Math.round(v);
+      v = String(v==null?'':v).replace(/;/g,',');
+      return v;
+    }).join(';'));
+  });
+  const csv = bom + lines.join('\\n');
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `ventas_detalle_${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1799,9 +2220,9 @@ function renderStock() {
   const noEmb   = sRows.reduce((a,r)=>a+r.NO_EMB,0);
   const embDep  = sRows.reduce((a,r)=>a+r.EMB_DEP,0);
   const col3    = isMC ? sRows.reduce((a,r)=>a+r.PREM_DEP,0) : sRows.reduce((a,r)=>a+r.CABA,0);
-  const col4    = isMC ? sRows.reduce((a,r)=>a+r.JUANI,0)    : sRows.reduce((a,r)=>a+r.MAXI,0);
+  const col4    = isMC ? sRows.reduce((a,r)=>a+r.CABA,0)     : sRows.reduce((a,r)=>a+r.MAXI,0);
   const col3lbl = isMC ? 'Prem. Dep' : 'CABA';
-  const col4lbl = isMC ? 'Juani'     : 'Maxi';
+  const col4lbl = isMC ? 'CABA'      : 'Maxi';
 
   // Pre-compute comprar card (avoids body.innerHTML += re-parse)
   const comprarHtml = renderComprarCard(calcComprar(sRows, salesMap, avgFactor, isMC), isMC);
@@ -1853,7 +2274,7 @@ function renderStock() {
               const mesesStock = avgSales>0 ? (r.TOTAL/avgSales).toFixed(1) : '∞';
               const tintClass = r.TOTAL<=0 ? 'row-danger' : r.TOTAL<5 ? 'row-warn' : '';
               const col3val = isMC ? r.PREM_DEP : r.CABA;
-              const col4val = isMC ? r.JUANI    : r.MAXI;
+              const col4val = isMC ? r.CABA     : r.MAXI;
               return `<tr class="${tintClass}">
                 <td class="cod">${r.COD}</td>
                 <td style="font-size:12px">${isMC?r.MARCA:r.DESC}</td>
@@ -1926,7 +2347,7 @@ function calcComprar(sRows, salesMap, avgFactor, isMC) {
     var r      = sRows[i];
     var avgM   = salesMap[r.COD] ? salesMap[r.COD] / avgFactor : 0;
     var totalS = isMC
-      ? r.NO_EMB + r.EMB_DEP + r.PREM_DEP + r.JUANI
+      ? r.NO_EMB + r.EMB_DEP + r.PREM_DEP + r.CABA
       : r.NO_EMB + r.EMB_DEP + (r.CABA || 0) + (r.MAXI || 0);
     var mTot   = avgM > 0 ? totalS / avgM : Infinity;
     if (isFinite(mTot) && mTot >= targetM) continue;
@@ -2188,15 +2609,98 @@ function renderPL() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// P&L — VISTA FINANCIERA (RENDICIÓN)
+// Agrupa por MES_COBRO (cuando la plata entra de verdad) en vez de por MES
+// (cuando se vendió) — separa lo economico de lo financiero. Enfocada solo
+// en cobros y comisiones a liquidar, sin CMV/Margen Bruto/Resultado Neto
+// (esos numeros solo tienen sentido en la vista economica).
+// ─────────────────────────────────────────────────────────────────────────────
+let PL_MODO = 'economica';
+let PL_MES_COBRO = null;
+
+function togglePLModo(modo) {
+  PL_MODO = modo;
+  document.getElementById('pl-btn-eco').classList.toggle('active', modo==='economica');
+  document.getElementById('pl-btn-fin').classList.toggle('active', modo==='financiera');
+  document.getElementById('pl-economica-body').style.display = modo==='economica' ? '' : 'none';
+  document.getElementById('pl-financiera-body').style.display = modo==='financiera' ? '' : 'none';
+  if(modo==='economica') renderPL(); else renderPLFinanciera();
+}
+
+function setPillFin(mes) {
+  PL_MES_COBRO = mes;
+  renderPLFinanciera();
+}
+
+function renderPLFinanciera() {
+  const rowsBase = applyVendedorFilter(V.raw);
+  const meses = [...new Set(rowsBase.map(r=>r.MES_COBRO).filter(Boolean))].sort();
+  if(!PL_MES_COBRO || !meses.includes(PL_MES_COBRO)) PL_MES_COBRO = meses[meses.length-1] || null;
+
+  const pillsEl = document.getElementById('pills-pl-fin');
+  if(pillsEl) {
+    pillsEl.innerHTML = meses.map(m =>
+      `<span class="pill${PL_MES_COBRO===m?' active':''}" onclick="setPillFin('${m}')">${m}</span>`
+    ).join('');
+  }
+
+  const rows = rowsBase.filter(r => r.MES_COBRO === PL_MES_COBRO);
+  const totalCobrar = rows.reduce((a,r)=>a+r.SUBTOTAL,0);
+
+  const comPorVend = {};
+  rows.forEach(r => { if(r.VENDEDOR) comPorVend[r.VENDEDOR] = (comPorVend[r.VENDEDOR]||0) + r.SUBTOTAL*r.COMISION; });
+  const comVendRows = Object.entries(comPorVend).sort((a,b)=>b[1]-a[1]);
+  const totalCom = comVendRows.reduce((a,[,c])=>a+c,0);
+  const comAdmin = totalCobrar * 0.20;
+  const resto = totalCobrar - totalCom - comAdmin;
+
+  const rp = (v) => totalCobrar>0 ? '<span class="pl-pct">'+pct(Math.abs(v)/totalCobrar)+'</span>' : '';
+
+  const filas = [
+    {label:'Total a cobrar este mes', val:totalCobrar, style:'color:var(--green);font-weight:700', badge:'<span class="pl-pct">100%</span>'},
+  ];
+
+  const vendHtml = comVendRows.map(([v,c]) => `
+    <tr>
+      <td style="padding:7px 12px 7px 28px;color:var(--accent3);font-size:12px;border-bottom:1px solid var(--border);opacity:.85">↳ ${v}</td>
+      <td class="num" style="padding:7px 12px;color:var(--accent3);font-size:12px;border-bottom:1px solid var(--border);opacity:.85">${fmt(-c)}${rp(c)}</td>
+    </tr>`).join('');
+
+  document.getElementById('pl-fin-table').innerHTML = !PL_MES_COBRO
+    ? '<div class="empty">No hay ventas con mes de cobro cargado todavía.</div>'
+    : `
+    <table style="width:100%">
+      ${filas.map(row=>`<tr>
+        <td style="padding:10px 12px;${row.style||''};border-bottom:1px solid var(--border)">${row.label}</td>
+        <td class="num" style="padding:10px 12px;${row.style||''};border-bottom:1px solid var(--border)">${fmt(row.val||0)}${row.badge||''}</td>
+      </tr>`).join('')}
+      <tr>
+        <td style="padding:10px 12px;color:var(--accent3);border-bottom:1px solid var(--border)">A liquidar a vendedores</td>
+        <td class="num" style="padding:10px 12px;color:var(--accent3);border-bottom:1px solid var(--border)">${fmt(-totalCom)}${rp(totalCom)}</td>
+      </tr>
+      ${vendHtml}
+      <tr>
+        <td style="padding:10px 12px;color:var(--accent3);border-bottom:1px solid var(--border)">Comisión administrativa (Franco 20%)</td>
+        <td class="num" style="padding:10px 12px;color:var(--accent3);border-bottom:1px solid var(--border)">${fmt(-comAdmin)}${rp(comAdmin)}</td>
+      </tr>
+      <tr>
+        <td style="padding:10px 12px;color:${resto>=0?'var(--green)':'var(--red)'};font-weight:700;font-size:16px;border-top:1px solid var(--border2)">Te queda a vos</td>
+        <td class="num" style="padding:10px 12px;color:${resto>=0?'var(--green)':'var(--red)'};font-weight:700;font-size:16px;border-top:1px solid var(--border2)">${fmt(resto)}${rp(resto)}</td>
+      </tr>
+    </table>`;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // ROUTER
 // ─────────────────────────────────────────────────────────────────────────────
 function renderPage(name) {
   if(name==='overview')  renderOverview();
+  if(name==='ventas')    renderVentasDetalle();
   if(name==='productos') renderProductos();
   if(name==='marcas')    renderMarcas();
   if(name==='clientes')  renderClientes();
   if(name==='stock')     renderStock();
-  if(name==='pl')        renderPL();
+  if(name==='pl')        { if(PL_MODO==='economica') renderPL(); else renderPLFinanciera(); }
 }
 
 function showPage(name) {
@@ -2205,17 +2709,40 @@ function showPage(name) {
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   document.getElementById('page-'+name).classList.add('active');
   const tabs = document.querySelectorAll('.tab');
-  const order = ['overview','productos','marcas','clientes','stock','pl'];
+  const order = ['overview','ventas','productos','marcas','clientes','stock','pl'];
   const idx = order.indexOf(name);
   if(idx>=0 && tabs[idx]) tabs[idx].classList.add('active');
   const ac = document.getElementById('analytics-controls');
-  if(ac) ac.style.display = ['overview','productos','marcas','clientes'].indexOf(name) >= 0 ? '' : 'none';
+  if(ac) ac.style.display = ['overview','ventas','productos','marcas','clientes'].indexOf(name) >= 0 ? '' : 'none';
   renderPage(name);
 }
 
-function onVendedorChange() {
-  F.vendedor = document.getElementById('sel-vendedor').value;
+// ── Selector de vendedor (multi-selección, se arma solo con V.vendedores) ─────
+function toggleVendDD(e) {
+  if(e) e.stopPropagation();
+  const dd = document.getElementById('vend-dd');
+  dd.style.display = dd.style.display==='none' ? 'block' : 'none';
+}
+function renderVendDD() {
+  const dd = document.getElementById('vend-dd');
+  dd.innerHTML = V.vendedores.map(v => {
+    const checked = F.vendedores.has(v) ? 'checked' : '';
+    const id = 'vend-chk-'+v.replace(/[^a-zA-Z0-9]/g,'');
+    return `<label for="${id}" style="display:flex;align-items:center;gap:8px;padding:5px 8px;font-size:12px;cursor:pointer;border-radius:4px" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">`
+      + `<input type="checkbox" id="${id}" ${checked} onchange="onVendCheck('${v}',this.checked)" style="cursor:pointer">${v}</label>`;
+  }).join('');
+}
+function onVendCheck(v, checked) {
+  if(checked) F.vendedores.add(v); else F.vendedores.delete(v);
+  updateVendBtnLabel();
+  renderVendDD();
+  if(VDET_DOM.VENDEDOR) refreshVdetFilterUI();
   renderPage(curPage);
+}
+function updateVendBtnLabel() {
+  const btn = document.getElementById('vend-btn');
+  const n = F.vendedores.size;
+  btn.textContent = (n===0 ? 'Todos los vendedores' : n===1 ? [...F.vendedores][0] : `${n} vendedores`) + ' ▾';
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -2251,13 +2778,11 @@ function truncate(str, n) {
   } catch(e) {}
   applyChartTheme();
 
-  // Populate vendedor select
-  const sel = document.getElementById('sel-vendedor');
-  V.vendedores.forEach(v => {
-    const opt = document.createElement('option');
-    opt.value = v; opt.textContent = v;
-    sel.appendChild(opt);
-  });
+  // Selector de vendedor: se arma solo con los nombres que aparecen en Ventas
+  renderVendDD();
+
+  // Filtros cruzados de la página Ventas - Detalle (vendedor/marca/cliente/zona/tipo cliente)
+  buildVdetFilters();
 
   // Badge
   const totalReg = V.raw.length;
@@ -2265,7 +2790,7 @@ function truncate(str, n) {
 
   // Cerrar dropdowns al hacer click fuera
   document.addEventListener('click', function(e){
-    const checks = [['prod-dd','prod-search'],['marc-dd','marc-search']];
+    const checks = [['prod-dd','prod-search'],['marc-dd','marc-search'],['vend-dd','vend-btn']];
     checks.forEach(([ddId,inpId])=>{
       const dd=document.getElementById(ddId), inp=document.getElementById(inpId);
       if(dd && inp && !dd.contains(e.target) && e.target!==inp) dd.style.display='none';

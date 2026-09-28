@@ -1,6 +1,10 @@
 # Output generado — se puede regenerar desde el script
 dashboard_live.html
-dashboard_dev.html
+*_dev.html
+
+# Cookies / temporales sueltos
+ca.txt
+*.cookies
 
 # Archivos de datos (Excel) — no son código, cambian solos
 ARCHIVOS BASE/
@@ -18,3 +22,10 @@ __pycache__/
 # Sistema
 .DS_Store
 Thumbs.db
+
+# App de remitos — repo git propio, no se versiona junto con este proyecto
+remitos-app/
+
+# Catalogo web — repo git propio (contactocarbonkey-coder/moncar-rmh-web),
+# no se versiona junto con este proyecto
+pagina-web/sitio/
