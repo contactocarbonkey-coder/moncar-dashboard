@@ -30,3 +30,7 @@ remitos-app/
 # Catalogo web — repo git propio (contactocarbonkey-coder/moncar-rmh-web),
 # no se versiona junto con este proyecto
 pagina-web/sitio/
+
+# Web multi-zona (Next.js + Supabase) — repo git propio, no se versiona con este proyecto.
+# Contiene .env.local con claves de Supabase.
+moncar-web/

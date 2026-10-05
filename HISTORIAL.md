@@ -5,6 +5,64 @@ es la memoria de "por qué está así". Fechas absolutas.
 
 ---
 
+## Indicador "Tableros vendidos" en el Overview — 2026-10-05 (los dos generadores)
+
+**Pedido de Franco**, con la condición explícita de que nada de lo existente cambie.
+Tarjeta nueva en el Overview (debajo de los Top 10, arriba de Lita) — detalle en
+`REFERENCIA.md` → "Tableros vendidos". Mismo parche en los dos generadores (script con
+anclas que deben aparecer exactamente una vez; respeta CRLF del generador Excel).
+
+**Regresión verificada**: (1) el diff contra la copia previa de cada generador da **0
+líneas borradas/modificadas**, solo agregadas; (2) `window.DATA` nuevo = viejo + campo
+`TABLERO` (idéntico en todo lo demás, Drive y Excel); (3) Edge headless sobre el HTML
+viejo y el nuevo, recorriendo 7 páginas × 5 períodos × 3 filtros de línea + Stock RMH +
+P&L financiera = 107 vistas por versión: **texto idéntico** (excluyendo la tarjeta
+nueva) y **0 errores JS**; (4) captura de la tarjeta con datos de prueba (copia en
+scratchpad marcando el remito 4290 como tablero 009).
+
+**Hallazgo**: el margen bruto de MONCAR da ~95% en todo sept-2026 porque varios códigos no
+tienen costo en `Costos` (CMV 0). No es del indicador — anotado en Pendientes.
+
+---
+
+## Tableros organizadores + bug de N° REMITO en Ventas — 2026-10-05
+
+**Tableros** (implementado en `remitos-app`, detalle en su `HISTORIAL.md`): la primera
+venta a un cliente se hace con un tablero organizador (regalo) lleno de productos MONCAR.
+Ahora el vendedor carga "Tablero 009" como un solo ítem y la app escribe una fila por
+código en `Ventas` (con `TABLERO=009`) y un movimiento `"Salida Tablero"` por código en
+STOCK_MONCAR. **El dashboard no necesitó cambios**: ve filas por código como siempre.
+Cambios en Sheets: hoja nueva `VENTAS!TABLEROS` (con el tablero 009), columna
+`Ventas.TABLERO`, tipo "Salida Tablero" en el desplegable y en las fórmulas de EMBOLSADO
+DEP./PREMIUM DEP. (`remitos-app/scripts/setup-tableros.ts`).
+
+**Bug encontrado de paso**: A1 de `Ventas` estaba renombrada a "remito" (no "N° REMITO")
+desde ~2026-10-02. La app escribía filas sin número de remito, y al eliminar un remito
+no encontraba sus filas para borrarlas. Afectó a 2 remitos: **4290** (Juli, 60 filas,
+se completó el número — verificado contra `Remitos`, mismo total $704.870) y **4289**
+(prueba de Franco ya eliminada, quedó 1 fila huérfana de Casa Franchi → borrada). A1
+vuelve a ser `N° REMITO` y `headerIndex()` de la app acepta "REMITO" como alias. El
+dashboard leía la col 0 por fallback, no se rompió.
+
+---
+
+## Menú lateral plegable + refresh como ícono — 2026-10-02 (los dos generadores)
+
+**Pedido de Franco** (con captura de referencia de otra app): pasar las pestañas de
+arriba a un menú lateral izquierdo plegable, agrupado por secciones, porque va a sumar
+muchas páginas (costos, contabilidad, rendición, compras, embolsado…). Sacar los botones
+"Actualizar datos" y "PDF"; el refresh queda como ícono chico arriba a la derecha.
+
+- Aplicado con el mismo patch a `generar_dashboard_drive.py` y `generar_dashboard.py`
+  (bloques idénticos; la versión Excel usa finales CRLF). Servidores: `servidor_drive.py`
+  conserva solo el auto-refresh de 4 min; `servidor.py` ya no inyecta nada.
+- Verificado: 33 vistas (todas las páginas × 5 períodos) sin errores JS; JS de los dos
+  generadores pasa `node --check`; capturas con menú abierto, plegado, tema claro y
+  servido por HTTP (ícono refresh visible).
+- Mismo día: botón **Copiar lista** en la tarjeta de Lita (texto para WhatsApp).
+
+---
+
 ## Mercadería Lita en el Overview + rangos abiertos en Stock — 2026-09-25 (solo Drive)
 
 **Pedido de Franco**: ver en el dashboard qué le debe devolver a Lita (lo que Maxi vende

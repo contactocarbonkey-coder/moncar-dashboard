@@ -43,38 +43,11 @@ def regenerar():
             sys.argv = old_argv
 
 
-# Boton que se inyecta al servir el HTML (solo ASCII en bytes literal)
+# Script que se inyecta al servir el HTML: solo el auto-refresh cada 4 minutos.
+# Los botones "Actualizar datos" y "PDF" que vivian aca se sacaron (2026-10-02): el
+# refresh manual es un icono de la barra superior del TEMPLATE (refreshData()).
 BOTON = (
-    '<style>@media print{#_refresh_wrap{display:none!important}}</style>'
-    '<div id="_refresh_wrap" style="position:fixed;top:8px;left:50%;transform:translateX(-50%);z-index:9999;display:flex;align-items:center;gap:10px">'
-    '<span id="_refresh_st" style="font-size:12px;color:#aaa"></span>'
-    '<button id="_refresh_btn" onclick="_doRefresh()" style="'
-    'background:#2563EB;color:#fff;border:none;padding:8px 18px;'
-    'border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;'
-    'box-shadow:0 2px 8px rgba(0,0,0,.35)">'
-    'Actualizar datos'
-    '</button>'
-    '<button onclick="window.print()" style="'
-    'background:#16A34A;color:#fff;border:none;padding:8px 18px;'
-    'border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;'
-    'box-shadow:0 2px 8px rgba(0,0,0,.35)">'
-    'PDF'
-    '</button>'
-    '</div>'
     '<script>'
-    'function _doRefresh(){'
-    'var btn=document.getElementById("_refresh_btn");'
-    'var st=document.getElementById("_refresh_st");'
-    'btn.disabled=true;btn.textContent="Actualizando...";st.textContent="";'
-    'fetch("/refresh",{cache:"no-store"})'
-    '.then(function(r){return r.json();})'
-    '.then(function(d){'
-    'if(d.ok){st.textContent="Listo";setTimeout(function(){location.reload();},400);}'
-    'else{btn.disabled=false;btn.textContent="Actualizar datos";st.textContent="Error al generar";}'
-    '})'
-    '.catch(function(){'
-    'btn.disabled=false;btn.textContent="Actualizar datos";st.textContent="Error de conexion";'
-    '});}'
     'setInterval(function(){'
     'fetch("/refresh",{cache:"no-store"})'
     '.then(function(r){return r.json();})'

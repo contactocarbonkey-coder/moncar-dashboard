@@ -13,7 +13,16 @@ nivel de detalle; no es necesario leerlo para tareas chicas.
   VENDEDOR, FECHA, LÍNEA, COD, CANTIDAD, CLIENTE, COMIS%, PRECIO UNIT (fórmula), SUBTOTAL,
   AÑO-MES, COMENTARIOS, CMV, MARGEN, MARCA, TIPO CLIENTE, ZONA, LOCALIDAD, PROVINCIA,
   DESCRIPCION. Desde 2026-09 además: `COBRADO_EN_MES` (SI/NO), `MES_COBRO`, `DESCUENTO`
-  ($ por línea), `DESCUENTO_PCT` (%). `SUBTOTAL` ya viene neto de descuento.
+  ($ por línea), `DESCUENTO_PCT` (%). `SUBTOTAL` ya viene neto de descuento. Desde
+  2026-10-05: `TABLERO` (col AC, texto, ej "009") — marca las filas que son componentes
+  de un tablero vendido; vacía en ventas sueltas. **A1 tiene que decir `N° REMITO`**: el
+  2026-10 apareció renombrada a "remito" y la app escribió remitos sin número (ver
+  `HISTORIAL.md`); la app ya acepta el alias, pero no renombrarla.
+- **TABLEROS** (desde 2026-10-05): registro de tableros organizadores armados. Una fila
+  por código: `N° TABLERO` (texto, "009") | `FECHA ARMADO` | `COD` (desplegable de LP
+  MONCAR) | `CANTIDAD`. Sin precio (sale de LP MONCAR al vender) y sin estado (vendido =
+  su N° aparece en `Ventas.TABLERO`). Franco la carga a mano al armar cada tablero.
+  Detalle en `remitos-app/CLAUDE.md` → "Tableros".
 - **LP MONCAR**: lista de precios solo productos MONCAR (CF, CC, CE). Fila 3 = headers,
   datos desde fila 4. Columna E = precio vigente.
 - **LP RMH**: lista de precios productos RM. Cols: A=COD, B=EMPRESA, C=MARCA,
@@ -47,7 +56,9 @@ CABA, Devolución simple, Préstamo dado/recibido, Devolución préstamo. Desde 
 Salida Venta Juli/Franco (automáticas desde `remitos-app`, ver "Pools JULI/FRANCO" en su
 CLAUDE.md) y **Retiro CABA/David/Maxi** (carga manual de Franco — hace el camino inverso a
 "Entrega a X": resta del pool del vendedor y devuelve a EMBOLSADO DEP. / PREMIUM DEP. del
-depósito).
+depósito). Desde 2026-10-05: **Salida Tablero** (solo MONCAR, automática desde
+`remitos-app`): componentes de un tablero vendido, restan de EMBOLSADO DEP. (o PREMIUM
+DEP. según ESTADO) venda quien venda.
 
 **Stock** (estado actual, fórmulas VLOOKUP+SUMIFS sobre Movimientos): COD,
 MARCA/DESCRIPCION, NO EMBOLSADO, EMBOLSADO DEP., PREMIUM DEP. (solo MONCAR), STOCK CABA,
@@ -92,9 +103,24 @@ más grande.
 
 ## Dashboard — páginas disponibles
 
+**Navegación (desde 2026-10-02, los dos generadores)**: menú lateral izquierdo plegable
+(`<aside class="sidebar">`, `toggleSidebar()`, estado en `localStorage.moncar_sidebar`;
+plegado = solo íconos, 64px) agrupado por secciones: General / Ventas / Producto y
+stock / Plata. Barra superior (`.topbar`): breadcrumb `#crumb` (sección › página),
+selector de vendedores, fecha de datos, ícono refresh (`refreshData()` → `/refresh`,
+oculto si el HTML se abre como archivo) y tema. Los botones grandes "Actualizar datos" y
+"PDF" que inyectaba el servidor se sacaron; el servidor Drive solo inyecta el auto-refresh
+de 4 min.
+
+**Sumar una página nueva**: (1) un `<button class="sb-item" data-page="X" data-sec="Sección"
+title="Nombre" onclick="showPage('X')">` con su ícono SVG dentro del `<nav class="sb-nav">`;
+(2) un `<div id="page-X" class="page">`; (3) su `renderX()` en `renderPage()`; (4) si usa
+los filtros de período, sumarla a la lista de `showPage()` que muestra
+`#analytics-controls`. En los dos generadores.
+
 | Página | Qué muestra |
 |--------|-------------|
-| Overview | KPIs generales, evolución, top vendedores, desglose por línea + tarjeta **Mercadería Lita** (abajo de todo, solo Drive) |
+| Overview | KPIs generales, evolución, top vendedores, desglose por línea + tarjeta **Tableros vendidos** (los dos generadores) + tarjeta **Mercadería Lita** (abajo de todo, solo Drive) |
 | Ventas (Detalle) | Tabla completa tipo tabla dinámica — filtros cruzados por vendedor (pills), marca/cliente/zona/tipo cliente (desplegable con buscador), orden por columna, buscador de texto libre, "Descargar CSV". KPIs de totales arriba. |
 | Productos | Buscador + detalle por producto (KPIs, evolución dual-axis, top clientes) + tabla resumen |
 | Marcas | Buscador + detalle por marca (KPIs, evolución, top productos) + tabla resumen |
@@ -135,7 +161,9 @@ al historial agrupado por `FECHA ENTREGA` (col M), o por mes de venta si no tien
 
 - **Pestaña Pendiente**: por código — pendiente, desde, embolsado estándar en depósito,
   sin embolsar, "¿Embolsar?" (faltan = pendiente − max(0, EMB_DEP)), y botón
-  **Entregar** con cantidad editable (parcial permitido).
+  **Entregar** con cantidad editable (parcial permitido). Botón **Copiar lista**
+  (`litaCopiar()`, 2026-10-02): copia "COD x cant" ordenado por código + total, con
+  negrita de WhatsApp, para mandarle a Lita.
 - **Pestaña Historial**: selector de mes de entrega (o Todos), uds por código y fechas.
 - **Escritura**: `litaEntregar()` → `POST /lita/entregar` (`servidor_drive.py`) →
   `.claude/entregas_lita.py`: lee la hoja por la API (no gviz), marca FIFO por fecha,
@@ -146,6 +174,17 @@ al historial agrupado por `FECHA ENTREGA` (col M), o por mes de venta si no tien
   Dependencia Python: `google-auth`.
 
 ---
+
+### Tableros vendidos (Overview, los dos generadores, desde 2026-10-05)
+
+`read_ventas()` agrega el campo `TABLERO` a cada fila (de `Ventas.TABLERO`, normalizado a
+3 dígitos con `norm_tablero()`; vacío si la columna no existe, ej. el Excel local).
+`renderTableros(rows, cmp)` (llamada al final de `renderOverview()`) agrupa por par
+(`REMITO`, `TABLERO`) sobre las mismas filas filtradas del Overview (período, línea,
+vendedor): KPIs de cantidad (con variación vs "Comparar con"), facturación y % del total,
+promedio por tablero, margen bruto (sin costo del organizador) + tabla N° / fecha /
+cliente / vendedor / remito / códigos / uds / facturación. Solo lectura, no toca ningún
+otro KPI (las filas de tablero ya estaban sumadas por código en todo el dashboard).
 
 ## JS — estado global y funciones clave
 

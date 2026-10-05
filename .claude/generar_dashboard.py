@@ -42,6 +42,13 @@ def load_wb(path, data_only=False):
 def s(val):
     return str(val).strip() if val is not None else ""
 
+def norm_tablero(val):
+    """N° de tablero de Ventas.TABLERO ("9", "9.0", "009") -> "009". Vacio si no hay."""
+    t = s(val)
+    if t.endswith('.0'):
+        t = t[:-2]
+    return t.zfill(3) if t.isdigit() else t.upper()
+
 def n(val):
     return float(val) if isinstance(val, (int, float)) else 0.0
 
@@ -98,6 +105,8 @@ def read_ventas(path):
     # existian antes; si no estan (Sheet/Excel viejo) quedan en None.
     iCOBRADO   = ci('COBRADO_EN_MES')
     iMESCOBRO  = ci('MES_COBRO')
+    # 2026-10: componentes de un tablero organizador vendido (remitos-app).
+    iTABLERO   = ci('TABLERO')
 
     raw = []
     _empty_streak = 0
@@ -147,6 +156,8 @@ def read_ventas(path):
         _mescobro_txt = s(row[iMESCOBRO]) if iMESCOBRO is not None and len(row) > iMESCOBRO else ""
         MES_COBRO = _mescobro_txt if _cobrado_txt.upper() == 'NO' and re.match(r'^\d{4}-\d{2}$', _mescobro_txt) else MES
 
+        TABLERO = norm_tablero(row[iTABLERO]) if iTABLERO is not None and len(row) > iTABLERO else ""
+
         # Filters
         if SUBTOTAL <= 0:
             continue
@@ -169,6 +180,7 @@ def read_ventas(path):
             'COMENTARIOS': COMENTARIOS, 'CMV': CMV, 'MARGEN': MARGEN,
             'MARCA': MARCA, 'TIPO_CLI': TIPO_CLI, 'ZONA': ZONA,
             'LOCALIDAD': LOCALIDAD, 'PROVINCIA': PROVINCIA, 'DESC': DESC,
+            'TABLERO': TABLERO,
         })
 
     months     = sorted(set(r['MES'] for r in raw))
@@ -339,20 +351,49 @@ body.light{
   --green:#15803d;--red:#dc2626;
 }
 body.light .card{box-shadow:0 1px 6px rgba(0,0,0,.08)}
-body.light nav{box-shadow:0 1px 4px rgba(0,0,0,.1)}
+body.light .topbar,body.light .sidebar{box-shadow:0 1px 4px rgba(0,0,0,.06)}
 body.light select{color:var(--text)}
 body{background:var(--bg);color:var(--text);font-family:'Space Grotesk',sans-serif;min-height:100vh}
-/* NAV */
-nav{position:sticky;top:0;z-index:100;background:var(--surface);border-bottom:1px solid var(--border);
-    display:flex;align-items:center;padding:0 24px;height:56px;gap:8px}
-.logo{font-weight:700;font-size:18px;color:var(--accent);white-space:nowrap;margin-right:16px;letter-spacing:-0.5px}
+/* LAYOUT: menu lateral + contenido */
+.app{display:flex;min-height:100vh}
+.main{flex:1;min-width:0}
+/* SIDEBAR (plegable: body.sb-collapsed) */
+.sidebar{width:232px;flex-shrink:0;position:sticky;top:0;height:100vh;z-index:110;
+  background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;transition:width .18s}
+.sb-head{display:flex;align-items:center;justify-content:space-between;height:56px;padding:0 10px 0 18px;
+  border-bottom:1px solid var(--border);flex-shrink:0}
+.logo{font-weight:700;font-size:18px;color:var(--accent);white-space:nowrap;letter-spacing:-0.5px;overflow:hidden}
 .logo span{color:var(--accent2)}
-.tabs{display:flex;gap:2px;flex:1}
-.tab{padding:6px 14px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:500;
-     color:var(--muted);border:none;background:none;transition:all .2s}
-.tab:hover{color:var(--text);background:var(--border)}
-.tab.active{color:var(--accent);background:rgba(0,212,170,.1)}
-.nav-right{display:flex;align-items:center;gap:12px;margin-left:auto}
+.sb-nav{flex:1;overflow-y:auto;overflow-x:hidden;padding:6px 10px 16px}
+.sb-sec{font-size:10px;font-weight:600;letter-spacing:1.1px;text-transform:uppercase;color:var(--muted);
+  padding:16px 10px 6px;white-space:nowrap}
+.sb-item{display:flex;align-items:center;gap:12px;width:100%;padding:8px 10px;margin-bottom:2px;border-radius:7px;
+  border:1px solid transparent;background:none;color:var(--muted);font-family:inherit;font-size:13.5px;font-weight:500;
+  cursor:pointer;text-align:left;white-space:nowrap;transition:background .15s,color .15s}
+.sb-item svg{width:18px;height:18px;flex-shrink:0}
+.sb-item:hover{background:var(--surface2);color:var(--text)}
+.sb-item.active{background:rgba(0,212,170,.1);border-color:rgba(0,212,170,.4);color:var(--accent)}
+body.sb-collapsed .sidebar{width:64px}
+body.sb-collapsed .sb-head{padding:0;justify-content:center}
+body.sb-collapsed .logo,body.sb-collapsed .sb-label,body.sb-collapsed .sb-sec span{display:none}
+body.sb-collapsed .sb-sec{padding:8px 0;margin:6px 8px;border-top:1px solid var(--border)}
+body.sb-collapsed .sb-item{justify-content:center;padding:9px 0}
+/* TOPBAR */
+.topbar{position:sticky;top:0;z-index:100;background:var(--surface);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 24px;height:56px;gap:12px}
+.crumb{font-size:13px;color:var(--muted);white-space:nowrap}
+.crumb strong{color:var(--text);font-weight:600}
+.nav-right{display:flex;align-items:center;gap:10px;margin-left:auto}
+.icon-btn{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;padding:0;
+  background:none;border:1px solid var(--border2);border-radius:6px;color:var(--muted);cursor:pointer;transition:all .2s}
+.icon-btn:hover{color:var(--text);border-color:var(--accent)}
+.icon-btn svg{width:16px;height:16px}
+.icon-btn.flat{border-color:transparent}
+.icon-btn.flat:hover{background:var(--surface2);border-color:transparent}
+.icon-btn.err{color:var(--red);border-color:var(--red)}
+.icon-btn.spin svg{animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media print{.sidebar,.topbar{display:none!important}}
 select{background:var(--surface2);color:var(--text);border:1px solid var(--border2);
        border-radius:6px;padding:5px 10px;font-size:13px;cursor:pointer}
 .badge{background:var(--surface2);border:1px solid var(--border2);border-radius:6px;
@@ -467,27 +508,43 @@ tr.row-warn td{background:rgba(245,158,11,.06)}
 </head>
 <body>
 
-<!-- NAV -->
-<nav>
-  <div class="logo">MONCAR<span>+RMH</span></div>
-  <div class="tabs">
-    <button class="tab active" onclick="showPage('overview')">Overview</button>
-    <button class="tab" onclick="showPage('ventas')">Ventas</button>
-    <button class="tab" onclick="showPage('productos')">Productos</button>
-    <button class="tab" onclick="showPage('marcas')">Marcas</button>
-    <button class="tab" onclick="showPage('clientes')">Clientes</button>
-    <button class="tab" onclick="showPage('stock')">Stock</button>
-    <button class="tab" onclick="showPage('pl')">P&amp;L</button>
+<div class="app">
+
+<!-- MENÚ LATERAL (plegable con el botón de arriba; se recuerda en localStorage) -->
+<aside class="sidebar">
+  <div class="sb-head">
+    <div class="logo">MONCAR<span>+RMH</span></div>
+    <button class="icon-btn flat" onclick="toggleSidebar()" title="Plegar / desplegar menú"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/></svg></button>
   </div>
+  <nav class="sb-nav">
+    <div class="sb-sec"><span>General</span></div>
+    <button class="sb-item active" data-page="overview" data-sec="General" title="Overview" onclick="showPage('overview')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg><span class="sb-label">Overview</span></button>
+    <div class="sb-sec"><span>Ventas</span></div>
+    <button class="sb-item" data-page="ventas" data-sec="Ventas" title="Ventas" onclick="showPage('ventas')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg><span class="sb-label">Ventas</span></button>
+    <button class="sb-item" data-page="productos" data-sec="Ventas" title="Productos" onclick="showPage('productos')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z"/><path d="M12 22V12"/><path d="m3.3 7 8.7 5 8.7-5"/></svg><span class="sb-label">Productos</span></button>
+    <button class="sb-item" data-page="marcas" data-sec="Ventas" title="Marcas" onclick="showPage('marcas')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r="1"/></svg><span class="sb-label">Marcas</span></button>
+    <button class="sb-item" data-page="clientes" data-sec="Ventas" title="Clientes" onclick="showPage('clientes')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span class="sb-label">Clientes</span></button>
+    <div class="sb-sec"><span>Producto y stock</span></div>
+    <button class="sb-item" data-page="stock" data-sec="Producto y stock" title="Stock" onclick="showPage('stock')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></svg><span class="sb-label">Stock</span></button>
+    <div class="sb-sec"><span>Plata</span></div>
+    <button class="sb-item" data-page="pl" data-sec="Plata" title="P&L" onclick="showPage('pl')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg><span class="sb-label">P&amp;L</span></button>
+  </nav>
+</aside>
+
+<div class="main">
+<!-- BARRA SUPERIOR -->
+<header class="topbar">
+  <div class="crumb" id="crumb"><span>General</span> › <strong>Overview</strong></div>
   <div class="nav-right">
     <div style="position:relative">
       <button class="stk-btn active" id="vend-btn" onclick="toggleVendDD(event)" style="font-size:12px;padding:6px 12px">Todos los vendedores ▾</button>
       <div id="vend-dd" onmousedown="event.preventDefault()" style="display:none;position:absolute;top:34px;right:0;background:var(--surface);border:1px solid var(--border);border-radius:6px;min-width:170px;max-height:260px;overflow-y:auto;z-index:200;box-shadow:0 4px 16px rgba(0,0,0,.3);padding:6px"></div>
     </div>
     <div class="badge" id="badge-info">Cargando...</div>
+    <button class="icon-btn" id="refresh-btn" onclick="refreshData()" title="Actualizar datos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg></button>
     <button class="theme-btn" id="theme-toggle" onclick="toggleTheme()" title="Cambiar tema">☀</button>
   </div>
-</nav>
+</header>
 
 <!-- ── Controles compartidos: período + línea (visible en Overview, Productos, Marcas, Clientes) ── -->
 <div id="analytics-controls">
@@ -562,6 +619,9 @@ tr.row-warn td{background:rgba(245,158,11,.06)}
       </tr></thead><tbody></tbody></table></div>
     </div>
   </div>
+
+  <!-- Tableros vendidos (mismos filtros de período/línea/vendedor que el resto del Overview) -->
+  <div class="card" id="ov-tab" style="margin-bottom:16px"></div>
 
 </div>
 
@@ -846,6 +906,9 @@ tr.row-warn td{background:rgba(245,158,11,.06)}
   </div>
 </div>
 
+</div><!-- /.main -->
+</div><!-- /.app -->
+
 <script>
 /*INJECT_DATA*/
 
@@ -943,6 +1006,27 @@ function applyChartTheme() {
     displayColors: true,
     boxPadding: 4
   };
+}
+
+function toggleSidebar() {
+  const c = document.body.classList.toggle('sb-collapsed');
+  try { localStorage.setItem('moncar_sidebar', c ? 'collapsed' : 'open'); } catch(e) {}
+  // Los gráficos de Chart.js se reacomodan al nuevo ancho
+  setTimeout(()=>Object.values(charts).forEach(ch=>ch.resize()), 200);
+}
+
+// Botón refresh (arriba a la derecha): vuelve a leer los Google Sheets vía el servidor
+function refreshData() {
+  const btn = document.getElementById('refresh-btn');
+  if(btn.classList.contains('spin')) return;
+  btn.classList.remove('err'); btn.classList.add('spin'); btn.title = 'Actualizando...';
+  fetch('/refresh', {cache:'no-store'})
+    .then(r => r.json())
+    .then(d => {
+      if(d.ok) { location.reload(); return; }
+      btn.classList.remove('spin'); btn.classList.add('err'); btn.title = 'Error al generar — reintentar';
+    })
+    .catch(() => { btn.classList.remove('spin'); btn.classList.add('err'); btn.title = 'Sin conexión con el servidor — reintentar'; });
 }
 
 function toggleTheme() {
@@ -1250,6 +1334,51 @@ function renderOverview() {
     <td class="num" style="color:var(--muted)">${i+1}</td><td>${c.cli||'—'}</td>
     <td class="num">${fmt(c.rev)}</td><td class="num">${fmtN(c.uds)}</td>
   </tr>`).join('');
+
+  renderTableros(rows, cmp);
+}
+
+function fmtFechaTab(iso) { const p = (iso||'').split('-'); return p.length===3 ? p[2]+'/'+p[1]+'/'+p[0] : (iso||'—'); }
+// ─────────────────────────────────────────────────────────────────────────────
+// TABLEROS VENDIDOS — un tablero organizador se vende como un item en
+// remitos-app y queda en Ventas como una fila por codigo con TABLERO="009".
+// Un tablero vendido = par (REMITO, TABLERO). Solo lectura sobre V.raw.
+// ─────────────────────────────────────────────────────────────────────────────
+function agruparTableros(rows) {
+  const m = {};
+  rows.forEach(r => {
+    if(!r.TABLERO) return;
+    const k = r.REMITO + '|' + r.TABLERO;
+    const o = m[k] || (m[k] = {num:r.TABLERO, remito:r.REMITO, fecha:r.FECHA, cliente:r.CLIENTE, vend:r.VENDEDOR, uds:0, rev:0, cmv:0, cods:new Set()});
+    o.uds += r.CANTIDAD; o.rev += r.SUBTOTAL; o.cmv += (r.CMV||0); o.cods.add(r.COD);
+  });
+  return Object.values(m);
+}
+
+function renderTableros(rows, cmp) {
+  const el = document.getElementById('ov-tab');
+  if(!el) return;
+  const tabs = agruparTableros(rows).sort((a,b) => (b.fecha||'').localeCompare(a.fecha||'') || b.num.localeCompare(a.num));
+  const prevN = cmp ? agruparTableros(cmp).length : null;
+  const n = tabs.length;
+  const rev = tabs.reduce((a,t)=>a+t.rev,0);
+  const uds = tabs.reduce((a,t)=>a+t.uds,0);
+  const cmv = tabs.reduce((a,t)=>a+t.cmv,0);
+  const revTot = rows.reduce((a,r)=>a+r.SUBTOTAL,0);
+  const kpis = '<div class="kpi-row cols4">' + [
+    kpi('Tableros vendidos', fmtN(n), n ? fmtN(uds)+' uds en tableros' : 'ninguno en el período', 'green', changeBadge(n, prevN)),
+    kpi('Facturación tableros', fmt(rev), revTot>0 ? pct(rev/revTot)+' de la facturación' : '—', 'amber', ''),
+    kpi('Promedio por tablero', n ? fmt(rev/n) : '—', n ? fmtN(uds/n)+' uds por tablero' : '—', 'blue', ''),
+    kpi('Margen bruto tableros', rev>0 ? pct((rev-cmv)/rev) : '—', 'sin costo del organizador', 'muted', ''),
+  ].join('') + '</div>';
+  const tabla = n ? '<div class="tbl-wrap"><table><thead><tr>'
+      + '<th>N° TABLERO</th><th>FECHA</th><th>CLIENTE</th><th>VENDEDOR</th><th class="num">REMITO</th><th class="num">CÓDIGOS</th><th class="num">UDS</th><th class="num">FACTURACIÓN</th>'
+      + '</tr></thead><tbody>'
+      + tabs.map(t => '<tr><td class="cod">'+t.num+'</td><td>'+fmtFechaTab(t.fecha)+'</td><td>'+(t.cliente||'—')+'</td><td>'+(t.vend||'—')+'</td>'
+        + '<td class="num">'+(t.remito||'—')+'</td><td class="num">'+t.cods.size+'</td><td class="num">'+fmtN(t.uds)+'</td><td class="num">'+fmt(t.rev)+'</td></tr>').join('')
+      + '</tbody></table></div>'
+    : '<div class="empty" style="padding:20px">Sin tableros vendidos en el período seleccionado.</div>';
+  el.innerHTML = '<div class="card-title"><span class="dot amber"></span>Tableros vendidos · período seleccionado</div>' + kpis + tabla;
 }
 
 function kpi(label, val, sub, color, change='') {
@@ -2706,12 +2835,13 @@ function renderPage(name) {
 function showPage(name) {
   curPage = name;
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   document.getElementById('page-'+name).classList.add('active');
-  const tabs = document.querySelectorAll('.tab');
-  const order = ['overview','ventas','productos','marcas','clientes','stock','pl'];
-  const idx = order.indexOf(name);
-  if(idx>=0 && tabs[idx]) tabs[idx].classList.add('active');
+  document.querySelectorAll('.sb-item[data-page]').forEach(t=>{
+    const on = t.dataset.page===name;
+    t.classList.toggle('active', on);
+    if(on) document.getElementById('crumb').innerHTML = '<span>'+t.dataset.sec+'</span> › <strong>'+t.title+'</strong>';
+  });
+  window.scrollTo(0,0);
   const ac = document.getElementById('analytics-controls');
   if(ac) ac.style.display = ['overview','ventas','productos','marcas','clientes'].indexOf(name) >= 0 ? '' : 'none';
   renderPage(name);
@@ -2777,6 +2907,13 @@ function truncate(str, n) {
     }
   } catch(e) {}
   applyChartTheme();
+
+  // Menú lateral: estado guardado; si no hay, plegado en pantallas angostas
+  let sb = null;
+  try { sb = localStorage.getItem('moncar_sidebar'); } catch(e) {}
+  if(sb === 'collapsed' || (sb === null && window.innerWidth < 900)) document.body.classList.add('sb-collapsed');
+  // Sin servidor (HTML abierto como archivo) no hay /refresh
+  if(location.protocol === 'file:') document.getElementById('refresh-btn').style.display = 'none';
 
   // Selector de vendedor: se arma solo con los nombres que aparecen en Ventas
   renderVendDD();

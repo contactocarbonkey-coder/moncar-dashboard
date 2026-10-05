@@ -12,10 +12,12 @@ router hacia los otros dos.
 | **Dashboard** (este) | Activo | raíz + `.claude/` | `abrir_dashboard_drive.bat` | este archivo → `HISTORIAL.md`, `REFERENCIA.md` |
 | **App remitos** | Activo | `remitos-app/` (repo git propio) | Vercel / `npm run dev` | `remitos-app/CLAUDE.md` |
 | **Página web / catálogo** | Activo, en vivo en `moncar-rmh.com.ar` desde 2026-09-28 | `pagina-web/` | ver `pagina-web/CLAUDE.md` | `pagina-web/CLAUDE.md` |
+| **Web multi-zona** (Next.js + Supabase) | En desarrollo desde 2026-10-05 — solo panel admin, local | `moncar-web/` (git propio) | `npm run dev` | `moncar-web/CLAUDE.md` |
 
 Si la tarea es de **remitos**, leer `remitos-app/CLAUDE.md` primero — nada de eso vive
-acá. Si la tarea es de la **página web / catálogo**, leer `pagina-web/CLAUDE.md`
-primero — nada de eso vive acá tampoco.
+acá. Si la tarea es de la **página web / catálogo** actual, leer `pagina-web/CLAUDE.md`
+primero — nada de eso vive acá tampoco. La **web multi-zona** es la propuesta nueva para
+las 6 zonas de la empresa (no solo la de Juli): su doc está en `moncar-web/CLAUDE.md`.
 
 ---
 
@@ -56,7 +58,7 @@ claude MONCAR RMH/
 ├── REFERENCIA.md           ← detalle estable: hojas, fórmulas, columnas, páginas, JS
 ├── .claude/
 │   ├── generar_dashboard_drive.py   ← ACTIVO: lee Sheets → dashboard_drive.html
-│   ├── servidor_drive.py            ← servidor 8051, expone /refresh y POST /lita/entregar
+│   ├── servidor_drive.py            ← servidor 8051, expone /refresh (ícono ↻ arriba a la derecha) y POST /lita/entregar
 │   ├── entregas_lita.py             ← ÚNICA escritura en Sheets: marca entregas a Lita
 │   ├── generar_dashboard.py         ← versión Excel local (sin uso activo)
 │   ├── servidor.py                  ← servidor 8050
@@ -159,6 +161,12 @@ FECHA ENTREGA) vía `entregas_lita.py`, con la cuenta de servicio de `remitos-ap
       hay que reescribirlas para Sheets (`,`) si se retoma.
 - [ ] `LP 10 CARBONES 01.04.2026.xlsx` sigue sin integrarse al dashboard.
 - [ ] Confirmar si `setup_stock_caba.gs` sigue en uso (hoja STOCK CABA de Andi).
+- [ ] **Tableros** (2026-10-05, feature en `remitos-app`): sumar el costo del organizador
+      regalado (fila extra en `Ventas` con SUBTOTAL 0 y CMV = costo) cuando Franco pase
+      la hoja de costos. (El indicador "Tableros vendidos" del Overview ya está hecho.)
+- [ ] Códigos MONCAR sin costo en `Costos` → CMV 0 en `Ventas` (ej. CF 712, CF 970, CF
+      971, CF 972, CE 309; 44 de 365 filas MONCAR de sept-2026). Infla el margen; revisar
+      junto con la hoja de costos nueva.
 - [ ] Productos en stock negativo tras el backfill de Juli (2026-09-07) — lista en
       `remitos-app/CLAUDE.md`; Franco tiene que revisar conteo físico si le interesa.
 
