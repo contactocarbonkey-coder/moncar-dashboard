@@ -1759,9 +1759,14 @@ function litaPendHTML() {
 
   // Texto para WhatsApp (Lita lo chequea contra lo suyo): por código, negrita con *...*
   const hoy = new Date().toLocaleDateString('es-AR', {day:'2-digit', month:'2-digit', year:'numeric'});
+  // Agrupado por marca (alfabético, "Sin marca" al final) y por código dentro de cada una.
+  const porMarca = {};
+  items.forEach(i => { const m = i.marca==='—' ? 'Sin marca' : i.marca; (porMarca[m] = porMarca[m] || []).push(i); });
+  const marcas = Object.keys(porMarca).sort((a,b) => (a==='Sin marca')-(b==='Sin marca') || a.localeCompare(b));
   LITA_COPY_TXT = '*Pendiente Lita — '+hoy+'*\\n'
-    + [...items].sort((a,b)=>a.cod.localeCompare(b.cod)).map(i => i.cod+' x '+fmtN(i.qty)).join('\\n')
-    + '\\n*Total: '+fmtN(totUds)+' uds ('+items.length+' códigos)*';
+    + marcas.map(m => '\\n*'+m.toUpperCase()+'*\\n'
+        + porMarca[m].sort((a,b)=>a.cod.localeCompare(b.cod)).map(i => i.cod+' x '+fmtN(i.qty)).join('\\n')).join('\\n')
+    + '\\n\\n*Total: '+fmtN(totUds)+' uds ('+items.length+' códigos)*';
   const copiar = '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">'
     + '<button class="stk-btn active" style="padding:5px 14px;font-size:12px" onclick="litaCopiar(this)">Copiar lista</button>'
     + '<span style="font-size:12px;color:var(--muted)">Códigos y cantidades pendientes, listo para pegar en WhatsApp</span>'

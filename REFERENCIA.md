@@ -201,7 +201,7 @@ al historial agrupado por `FECHA ENTREGA` (col M), o por mes de venta si no tien
   OK (los rojos a mano); arrancan sin tildar. Botón **Entregar seleccionados** ("N
   códigos · M remitos · X uds"). Estado: `LITA_SEL` / `LITA_QTY` (clave `"cod|remito"`),
   `LITA_OPEN`. El remito es el texto de COMENTARIOS ("Remito N° 4280"). Botón **Copiar lista**
-  (`litaCopiar()`, 2026-10-02): copia "COD x cant" ordenado por código + total, con
+  (`litaCopiar()`, 2026-10-02): copia "COD x cant" agrupado por marca (encabezado en negrita, alfabético, "Sin marca" al final; desde 2026-10-06) y ordenado por código dentro de cada una, + total, con
   negrita de WhatsApp, para mandarle a Lita.
 - **Pestaña Historial**: selector de mes de entrega (o Todos), uds por código y fechas.
 - **Escritura**: `litaEntregarLote()` → `POST /lita/entregar` con
