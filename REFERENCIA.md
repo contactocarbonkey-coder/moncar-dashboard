@@ -21,7 +21,8 @@ nivel de detalle; no es necesario leerlo para tareas chicas.
 - **TABLEROS** (desde 2026-10-05): registro de tableros organizadores armados. Una fila
   por código: `N° TABLERO` (texto, "009") | `FECHA ARMADO` | `COD` (desplegable de LP
   MONCAR) | `CANTIDAD`. Sin precio (sale de LP MONCAR al vender) y sin estado (vendido =
-  su N° aparece en `Ventas.TABLERO`). Franco la carga a mano al armar cada tablero.
+  su N° aparece en `Ventas.TABLERO`). Desde 2026-10-06 Franco la carga subiendo el PDF
+  de su planilla en remitos-app → `/admin` → Tableros (también se puede a mano).
   Detalle en `remitos-app/CLAUDE.md` → "Tableros".
 - **LP MONCAR**: lista de precios solo productos MONCAR (CF, CC, CE). Fila 3 = headers,
   datos desde fila 4. Columna E = precio vigente.
