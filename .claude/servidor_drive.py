@@ -18,9 +18,10 @@ def _load_gen_mod():
 
 _gen_mod = _load_gen_mod()
 
-# Unico modulo que ESCRIBE en Sheets: marca entregas de mercaderia a Lita.
+# Modulos que ESCRIBEN en Sheets: entregas de mercaderia a Lita y prestamos entre zonas.
 sys.path.insert(0, os.path.join(DIR, '.claude'))
 import entregas_lita
+import prestamos
 
 # ThreadingHTTPServer atiende cada request en su propio hilo. regenerar() toca
 # sys.argv (global de proceso) y escribe el mismo archivo de salida, asi que si
@@ -43,20 +44,10 @@ def regenerar():
             sys.argv = old_argv
 
 
-# Script que se inyecta al servir el HTML: solo el auto-refresh cada 4 minutos.
-# Los botones "Actualizar datos" y "PDF" que vivian aca se sacaron (2026-10-02): el
-# refresh manual es un icono de la barra superior del TEMPLATE (refreshData()).
-BOTON = (
-    '<script>'
-    'setInterval(function(){'
-    'fetch("/refresh",{cache:"no-store"})'
-    '.then(function(r){return r.json();})'
-    '.then(function(d){ if(d.ok){ location.reload(); } })'
-    '.catch(function(){});'
-    '}, 240000);'
-    '</script>'
-    '</body>'
-).encode('utf-8')
+# Antes se inyectaban aca los botones "Actualizar datos" y "PDF" (sacados 2026-10-02)
+# y un auto-refresh cada 4 minutos (sacado 2026-10-06, pedido de Franco). Los datos
+# se actualizan solo con el icono de refresh de la barra superior (refreshData()).
+BOTON = b'</body>'
 
 
 def abrir_chrome():
@@ -111,7 +102,7 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_POST(self):
-        if self.path != '/lita/entregar':
+        if self.path not in ('/lita/entregar', '/prestamos/registrar'):
             self.send_response(404); self.end_headers(); return
         # Solo desde el propio dashboard: otra pagina abierta en el navegador
         # no puede mandar un POST con JSON a localhost sin este Origin.
@@ -122,8 +113,16 @@ class Handler(BaseHTTPRequestHandler):
         try:
             largo = int(self.headers.get('Content-Length', 0))
             datos = json.loads(self.rfile.read(largo).decode('utf-8'))
-            res = entregas_lita.entregar(datos['cod'], datos['cantidad'])
-            print("Lita: entregado %s x %s" % (res['cod'], res['entregado']))
+            if self.path == '/lita/entregar':
+                # Acepta una lista {items:[{cod,cantidad},...]} o un solo {cod,cantidad}.
+                items = datos.get('items') or [{'cod': datos.get('cod'), 'cantidad': datos.get('cantidad')}]
+                res = entregas_lita.entregar_varios(items)
+                print("Lita: entregados %d codigos, %d uds (%s)" % (
+                    res['codigos'], res['uds'], ', '.join('%s x %d %s' % (i['cod'], i['entregado'], i['remito']) for i in res['items'])))
+            else:
+                res = prestamos.registrar(datos.get('op'), datos.get('persona'), datos.get('fecha'),
+                                          datos.get('items') or [], datos.get('comentario', ''))
+                print("Prestamos: %s %s (%d filas)" % (res['op'], res['persona'], res['filas']))
         except ValueError as e:
             self._json(400, {'ok': False, 'error': str(e)}); return
         except Exception as e:

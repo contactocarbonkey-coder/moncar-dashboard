@@ -443,6 +443,52 @@ def read_stock_rmh():
     print(f"  -> {len(rows)} productos RMH")
     return rows
 
+PRESTAMO_OPS = {
+    'Préstamo recibido': 'recibido',
+    'Devolución préstamo recibido': 'devolucion',
+    'Préstamo dado': 'dado',
+    'Recupero préstamo dado': 'recupero',
+}
+PERSONAS_ZONAS = ['Luvi', 'Lita', 'Naza', 'Mapi', 'Fede']
+
+def read_prestamos():
+    """Prestamos de mercaderia entre zonas (pagina "Prestamos"): filas de
+    Movimientos de STOCK_MONCAR y STOCK_RMH con los 4 tipos de prestamo.
+    PERSONA / SALDA COD / SALDA CANT son columnas agregadas el 2026-10-06 (si
+    todavia no existen, PERSONA queda vacia = "Sin asignar"). El calculo de
+    saldos se hace en el JS. Escritura: prestamos.py."""
+    print("Leyendo prestamos (Movimientos MONCAR + RMH)...")
+    norm = lambda t: ' '.join(s(t).replace('\n', ' ').split()).upper()
+    personas = {p.upper(): p for p in PERSONAS_ZONAS}
+    movs = []
+    for linea, sid in (('MONCAR', STOCK_MC_SHEET_ID), ('RMH', STOCK_RMH_SHEET_ID)):
+        rows = fetch_sheet_csv(sid, 'Movimientos')
+        ih = next((i for i, r in enumerate(rows[:8]) if 'COMENTARIOS' in [norm(c) for c in r]), None)
+        if ih is None:
+            print(f"  Aviso: sin header en Movimientos {linea}, se omite.")
+            continue
+        header = [norm(c) for c in rows[ih]]
+        col = lambda n: header.index(n) if n in header else None
+        c = {n: col(n) for n in ('FECHA', 'TIPO MOVIMIENTO', 'ESTADO', 'COD PRODUCTO', 'CANTIDAD',
+                                 'COMENTARIOS', 'PERSONA', 'SALDA COD', 'SALDA CANT')}
+        cel = lambda r, n: s(r[c[n]]) if c[n] is not None and c[n] < len(r) else ''
+        for r in rows[ih + 1:]:
+            op = PRESTAMO_OPS.get(cel(r, 'TIPO MOVIMIENTO'))
+            cod = ' '.join(cel(r, 'COD PRODUCTO').split()).upper()
+            qty = n(cel(r, 'CANTIDAD'))
+            if not op or not cod or qty <= 0:
+                continue
+            movs.append({
+                'linea': linea, 'op': op, 'fecha': parse_fecha(cel(r, 'FECHA')),
+                'persona': personas.get(cel(r, 'PERSONA').upper(), ''),
+                'cod': cod, 'qty': qty, 'estado': cel(r, 'ESTADO'),
+                'salda_cod': ' '.join(cel(r, 'SALDA COD').split()).upper(),
+                'salda_cant': n(cel(r, 'SALDA CANT')),
+                'coment': cel(r, 'COMENTARIOS'),
+            })
+    print(f"  -> {len(movs)} movimientos de prestamo")
+    return {'movs': movs}
+
 def read_lita():
     """Movimientos "Salida Lita" de STOCK_MONCAR (ventas MONCAR de Maxi, que
     salen del stock de Lita y Franco le repone). Pendiente = todavia no se
@@ -524,6 +570,12 @@ def main():
     except Exception as e:
         print(f"  ADVERTENCIA entregas Lita: {e}")
 
+    prestamos = {'movs': []}
+    try:
+        prestamos = read_prestamos()
+    except Exception as e:
+        print(f"  ADVERTENCIA prestamos: {e}")
+
     data = {
         'ventas': {
             'raw': raw,
@@ -533,6 +585,7 @@ def main():
         'stock_mc':  {'rows': stock_mc_rows},
         'stock_rmh': {'rows': stock_rmh_rows},
         'lita':      lita,
+        'prestamos': prestamos,
         'precios':   precios,
         'generated_at': datetime.now().strftime("%d/%m/%Y %H:%M"),
     }
@@ -719,6 +772,24 @@ tr.row-warn td{background:rgba(245,158,11,.06)}
 #analytics-controls{background:var(--surface);border-bottom:1px solid var(--border);padding:10px 24px 10px}
 #analytics-controls .period-bar{margin-bottom:0}
 #analytics-controls .custom-range{margin-top:8px;margin-bottom:0}
+/* PRÉSTAMOS: tarjetas por persona + ventanas de carga */
+.pr-cards{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:16px}
+.pr-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;cursor:pointer;transition:border-color .15s}
+.pr-card:hover{border-color:var(--border2)}
+.pr-card.active{border-color:var(--accent);background:rgba(0,212,170,.06)}
+.pr-card .n{font-size:13px;font-weight:600;color:var(--text)}
+.pr-card .v{font-size:22px;font-weight:700;font-family:'DM Mono',monospace;margin:6px 0 2px}
+.pr-card .s{font-size:11px;color:var(--muted)}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:500}
+.modal{background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:22px 24px;width:min(680px,94vw);max-height:90vh;overflow:auto}
+.modal h3{margin-bottom:16px}
+.fm-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.fm-row label{font-size:12px;color:var(--muted);min-width:90px}
+.fm-row input,.fm-row select{background:var(--surface2);border:1px solid var(--border2);color:var(--text);
+  font-family:inherit;font-size:13px;padding:6px 9px;border-radius:6px;outline:none}
+.fm-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
+.fm-err{color:var(--red);font-size:12px;margin-top:8px;min-height:16px}
+@media(max-width:900px){.pr-cards{grid-template-columns:repeat(2,1fr)}}
 /* SCROLLBAR */
 ::-webkit-scrollbar{width:6px;height:6px}
 ::-webkit-scrollbar-track{background:var(--bg)}
@@ -750,6 +821,7 @@ tr.row-warn td{background:rgba(245,158,11,.06)}
     <button class="sb-item" data-page="clientes" data-sec="Ventas" title="Clientes" onclick="showPage('clientes')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span class="sb-label">Clientes</span></button>
     <div class="sb-sec"><span>Producto y stock</span></div>
     <button class="sb-item" data-page="stock" data-sec="Producto y stock" title="Stock" onclick="showPage('stock')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></svg><span class="sb-label">Stock</span></button>
+    <button class="sb-item" data-page="prestamos" data-sec="Producto y stock" title="Préstamos" onclick="showPage('prestamos')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/></svg><span class="sb-label">Préstamos</span></button>
     <div class="sb-sec"><span>Plata</span></div>
     <button class="sb-item" data-page="pl" data-sec="Plata" title="P&L" onclick="showPage('pl')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg><span class="sb-label">P&amp;L</span></button>
   </nav>
@@ -1090,6 +1162,15 @@ tr.row-warn td{background:rgba(245,158,11,.06)}
   </div>
   <div id="stock-body"></div>
 </div>
+
+<!-- Préstamos de mercadería entre zonas (solo versión Drive: escribe en Movimientos) -->
+<div id="page-prestamos" class="page">
+  <h2>Préstamos</h2>
+  <div id="prest-body"></div>
+  <datalist id="dl-MONCAR"></datalist>
+  <datalist id="dl-RMH"></datalist>
+</div>
+<div id="prest-modal"></div>
 
 <div id="page-pl" class="page">
   <h2>P&amp;L — Estado de Resultados</h2>
@@ -1574,19 +1655,28 @@ function renderOverview() {
 // Lita solo recibe embolsado ESTÁNDAR: el premium no cubre lo pendiente.
 // ─────────────────────────────────────────────────────────────────────────────
 const LITA = window.DATA.lita || {pend:[], ent:[]};
-const LITA_PEND = {};   // cod → {qty, desde, remitos:Set}
+const LITA_PEND = {};   // cod → {qty, desde, rems:{remito → {remito, num, qty, fecha}}}
 LITA.pend.forEach(p => {
-  const o = LITA_PEND[p.cod] || (LITA_PEND[p.cod] = {qty:0, desde:p.fecha, remitos:new Set()});
+  const o = LITA_PEND[p.cod] || (LITA_PEND[p.cod] = {qty:0, desde:p.fecha, rems:{}});
   o.qty += p.qty;
   if(p.fecha && p.fecha < o.desde) o.desde = p.fecha;
-  if(p.remito) o.remitos.add(p.remito.replace('Remito N° ',''));
+  const rk = p.remito || '';  // texto de COMENTARIOS tal cual ("Remito N° 4280")
+  const x = o.rems[rk] || (o.rems[rk] = {remito:rk, num:rk ? rk.split(' ').pop() : '', qty:0, fecha:p.fecha});
+  x.qty += p.qty;
+  if(p.fecha && p.fecha < x.fecha) x.fecha = p.fecha;
 });
+// N° de remito → cliente (de Ventas), para el desplegable de cada código.
+const LITA_CLI = {};
+V.raw.forEach(r => { if(r.REMITO && r.CLIENTE && !LITA_CLI[r.REMITO]) LITA_CLI[r.REMITO] = r.CLIENTE; });
 const MC_BY_COD = {};
 MC_ROWS.forEach(r => { MC_BY_COD[r.COD.split(' ').join('').toUpperCase()] = r; });
 function mcRow(cod) { return MC_BY_COD[cod.split(' ').join('').toUpperCase()]; }
 function litaPendQty(cod) { const o = LITA_PEND[cod.split(' ').filter(Boolean).join(' ').toUpperCase()]; return o ? o.qty : 0; }
 
 let LITA_TAB = 'pend';
+const LITA_SEL = new Set();  // pares "cod|remito" tildados para "Entregar seleccionados"
+const LITA_QTY = {};         // cantidad editada a mano por par (sobrevive al cambio de pestaña)
+const LITA_OPEN = new Set(); // códigos con el desplegable de remitos abierto
 let LITA_MES = null;
 function fmtFecha(iso) { const p = (iso||'').split('-'); return p.length===3 ? p[2]+'/'+p[1]+'/'+p[0] : (iso||'—'); }
 
@@ -1599,6 +1689,7 @@ function renderLita() {
     + '</div>';
   el.innerHTML = '<div class="card-title"><span class="dot"></span>Mercadería Lita · a devolver (solo MONCAR)</div>'
     + tabs + (LITA_TAB==='pend' ? litaPendHTML() : litaHistHTML());
+  if(LITA_TAB==='pend') litaActualizarBoton();
 }
 
 function litaPendHTML() {
@@ -1606,11 +1697,15 @@ function litaPendHTML() {
     const r = mcRow(cod) || {};
     const emb = r.EMB_DEP||0, noEmb = r.NO_EMB||0;
     const falta = Math.max(0, o.qty - Math.max(0, emb));  // stock negativo = 0, no "debe" más
-    return {cod, marca:r.MARCA||'—', qty:o.qty, desde:o.desde, remitos:[...o.remitos], emb, noEmb, falta};
+    const rems = Object.values(o.rems).filter(x=>x.qty>0).sort((a,b)=>(a.fecha||'').localeCompare(b.fecha||'') || a.num.localeCompare(b.num));
+    return {cod, marca:r.MARCA||'—', qty:o.qty, desde:o.desde, rems, emb, noEmb, falta};
   }).filter(i => i.qty > 0)
     .sort((a,b) => (b.falta>0)-(a.falta>0) || b.qty-a.qty || a.cod.localeCompare(b.cod));
 
   if(!items.length) return '<div class="empty" style="padding:30px">No hay mercadería pendiente para Lita.</div>';
+
+  // Solo quedan tildados remitos que siguen pendientes (después de entregar, desaparecen).
+  [...LITA_SEL].forEach(k => { if(!litaRem(k)) LITA_SEL.delete(k); });
 
   const totUds  = items.reduce((a,i)=>a+i.qty,0);
   const aEmb    = items.filter(i=>i.falta>0);
@@ -1628,19 +1723,38 @@ function litaPendHTML() {
     else if(i.noEmb<=0) emb = '<span style="color:var(--red);font-weight:600">Faltan '+fmtN(i.falta)+' — sin stock sin embolsar</span>';
     else if(i.noEmb<i.falta) emb = '<span style="color:var(--red);font-weight:600">Embolsar '+fmtN(i.noEmb)+'</span> <span style="color:var(--muted);font-size:11px">(faltan '+fmtN(i.falta)+', no alcanza el sin embolsar)</span>';
     else emb = '<span style="color:var(--red);font-weight:600">Embolsar '+fmtN(i.falta)+'</span>';
-    return '<tr class="'+(i.falta>0?'row-danger':'')+'">'
-      + '<td class="cod">'+i.cod+'</td>'
+    const abierto = LITA_OPEN.has(i.cod);
+    const nSel = i.rems.filter(x=>LITA_SEL.has(litaKey(i.cod,x.remito))).length;
+    const resumen = i.rems.map(x => x.num ? x.num : 's/remito').join(' · ')
+      + (nSel ? ' <span style="color:var(--green);font-weight:600">· '+nSel+' tildado'+(nSel>1?'s':'')+'</span>' : '');
+    const main = '<tr class="'+(i.falta>0?'row-danger':'')+'">'
+      + '<td><input type="checkbox" class="lita-chk-cod" data-cod="'+i.cod+'" data-ok="'+(i.falta<=0?1:0)+'" data-part="'+(nSel>0 && nSel<i.rems.length?1:0)+'" '+(nSel===i.rems.length?'checked':'')+' onchange="litaTildarCod(this)" title="Tildar todos los remitos de este código"></td>'
+      + '<td class="cod" style="cursor:pointer;white-space:nowrap" data-cod="'+i.cod+'" onclick="litaAbrir(this)">'+(abierto?'▾':'▸')+' '+i.cod+'</td>'
       + '<td style="font-size:12px">'+i.marca+'</td>'
       + '<td class="num" style="font-weight:700">'+fmtN(i.qty)+'</td>'
       + '<td class="num" style="color:var(--muted)">'+fmtFecha(i.desde)+'</td>'
       + '<td class="num">'+fmtN(i.emb)+'</td>'
       + '<td class="num" style="color:var(--muted)">'+fmtN(i.noEmb)+'</td>'
       + '<td style="font-size:12px">'+emb+'</td>'
-      + '<td style="white-space:nowrap">'
-      +   '<input type="number" min="1" max="'+i.qty+'" value="'+i.qty+'" id="lita-q-'+i.cod.split(' ').join('_')+'" class="date-inp" style="width:70px;padding:4px 6px">'
-      +   ' <button class="stk-btn" style="padding:4px 12px;font-size:12px" onclick="litaEntregar(\\''+i.cod+'\\', this)">Entregar</button>'
-      + '</td>'
+      + '<td style="font-size:12px;cursor:pointer" data-cod="'+i.cod+'" onclick="litaAbrir(this)">'+i.rems.length+' remito'+(i.rems.length>1?'s':'')+': '+resumen+'</td>'
       + '</tr>';
+    if(!abierto) return main;
+    // Desplegable: un renglón por remito pendiente, con cliente (de Ventas).
+    return main + i.rems.map(x => {
+      const k = litaKey(i.cod, x.remito);
+      const q = litaQtyDe(k);
+      return '<tr style="background:var(--surface2)">'
+        + '<td style="padding-left:18px"><input type="checkbox" class="lita-chk-rem" data-k="'+k+'" '+(LITA_SEL.has(k)?'checked':'')+' onchange="litaTildarRem(this)"></td>'
+        + '<td colspan="2" style="font-size:12px;padding-left:22px">↳ '+(x.num ? 'Remito <strong>'+x.num+'</strong>' : '<em>sin remito</em>')
+        +   ' <span style="color:var(--muted)">· '+(LITA_CLI[x.num]||'cliente desconocido')+'</span></td>'
+        + '<td class="num">'+fmtN(x.qty)+'</td>'
+        + '<td class="num" style="color:var(--muted)">'+fmtFecha(x.fecha)+'</td>'
+        + '<td colspan="3" class="lita-hint" style="font-size:11px;color:var(--muted)">'+(q<x.qty ? 'Parcial: quedan '+fmtN(x.qty-q)+' pendientes de este remito' : '')+'</td>'
+        + '<td style="white-space:nowrap;font-size:12px">'
+        +   '<input type="number" min="1" max="'+x.qty+'" value="'+q+'" data-k="'+k+'" class="date-inp" style="width:70px;padding:4px 6px" oninput="litaCantidad(this)"> uds'
+        + '</td>'
+        + '</tr>';
+    }).join('');
   }).join('');
 
   // Texto para WhatsApp (Lita lo chequea contra lo suyo): por código, negrita con *...*
@@ -1653,14 +1767,23 @@ function litaPendHTML() {
     + '<span style="font-size:12px;color:var(--muted)">Códigos y cantidades pendientes, listo para pegar en WhatsApp</span>'
     + '</div>';
 
-  return kpis + copiar
+  const todosAbiertos = items.every(i=>LITA_OPEN.has(i.cod));
+  const barra = '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">'
+    + '<button id="lita-btn-lote" class="stk-btn active" style="padding:5px 14px;font-size:12px" onclick="litaEntregarLote(this)" disabled>Entregar seleccionados</button>'
+    + '<button class="stk-btn" style="padding:5px 14px;font-size:12px" onclick="litaAbrirTodos('+(todosAbiertos?0:1)+')">'+(todosAbiertos?'Cerrar todos':'Ver remitos de todos')+'</button>'
+    + '<span style="font-size:12px;color:var(--muted)">Abrí un código (▸) para ver de qué remitos y clientes viene, tildá lo que entregaste y entregá todo junto</span>'
+    + '</div>';
+
+  return kpis + copiar + barra
     + '<div class="tbl-wrap"><table><thead><tr>'
+    + '<th><input type="checkbox" id="lita-chk-all" title="Tildar todos los remitos de los códigos listos (OK)" onchange="litaTildarTodos(this)"></th>'
     + '<th>COD</th><th>MARCA</th><th class="num">Pendiente</th><th class="num">Desde</th>'
-    + '<th class="num">Emb. estándar dep.</th><th class="num">Sin emb.</th><th>¿Embolsar?</th><th>Marcar entregado</th>'
+    + '<th class="num">Emb. estándar dep.</th><th class="num">Sin emb.</th><th>¿Embolsar?</th><th>Remitos / a entregar</th>'
     + '</tr></thead><tbody>'+rows+'</tbody></table></div>'
     + '<div class="note">Se acumula por código con cada venta MONCAR de Maxi (remitos-app). '
     + '<strong>Emb. estándar dep.</strong>: embolsado estándar en depósito — incluye lo pendiente de Lita, que recién se resta al marcarlo entregado. El premium no cuenta (Lita solo recibe estándar). '
-    + '<strong>Entregar</strong>: podés poner una cantidad parcial; se descuenta primero de las ventas más viejas y se resta del stock.</div>';
+    + '<strong>Entregar seleccionados</strong>: cada entrega se imputa al remito tildado (no a otro). Tildar el código tilda todos sus remitos; la casilla del encabezado tilda los códigos listos (OK), los rojos se tildan a mano. '
+    + 'Si de un remito entregás menos, poné la cantidad en su renglón: lo que falta queda pendiente en ese mismo remito. Si un código falla, no se guarda ninguno.</div>';
 }
 
 function litaHistHTML() {
@@ -1700,6 +1823,286 @@ function litaHistHTML() {
     + (aprox ? '<div class="note">Entregas marcadas antes de que existiera la columna FECHA ENTREGA (25/09/2026): se agrupan por mes de la venta, no de la entrega.</div>' : '');
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// PRÉSTAMOS entre zonas (Luvi, Lita, Naza, Mapi, Fede). Fuente: filas de
+// Movimientos MONCAR + RMH (read_prestamos). Saldo por persona+código =
+// prestado − lo que cancelan las devoluciones (SALDA COD/CANT, o su propio
+// COD/CANTIDAD si están vacías: se puede devolver con otro código).
+// Escritura: POST /prestamos/registrar (servidor_drive.py → prestamos.py).
+// ─────────────────────────────────────────────────────────────────────────────
+const PREST = (window.DATA.prestamos || {movs:[]}).movs;
+const PR_PERSONAS = ['Luvi','Lita','Naza','Mapi','Fede'];
+const PR_OP_LBL = {recibido:'Préstamo recibido', devolucion:'Devolución', dado:'Préstamo dado', recupero:'Recupero'};
+const PR_ESTADOS = {MONCAR:['Embolsado','No embolsado','Premium'], RMH:['Embolsado','No embolsado']};
+let PR_DIR = 'debemos', PR_TAB = 'abiertos', PR_PERSONA = null, PR_HMES = 'ALL', PR_ROWS = [], PR_FORM = null;
+
+const prKey = c => String(c||'').split(' ').join('').toUpperCase();
+const PR_CANON = {MONCAR:{}, RMH:{}};   // "CF917" → "CF 917" (para validar lo que se tipea)
+MC_ROWS.forEach(r => { PR_CANON.MONCAR[prKey(r.COD)] = r; });
+RMH_ROWS.forEach(r => { PR_CANON.RMH[prKey(r.COD)] = r; });
+function prLinea(cod) { return prKey(cod).startsWith('RM') ? 'RMH' : 'MONCAR'; }
+function prDesc(cod, linea) { const r = PR_CANON[linea||prLinea(cod)][prKey(cod)]; return r ? (r.MARCA || r.DESC || '—') : '—'; }
+function prEsc(s) { return String(s==null?'':s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+function prHoy() { const d = new Date(), p = n => String(n).padStart(2,'0'); return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate()); }
+function prDias(iso) { return iso ? Math.max(0, Math.floor((new Date(prHoy()+'T00:00:00') - new Date(iso+'T00:00:00'))/864e5)) : 0; }
+
+// Saldos por persona+código para una dirección ('debemos' = nos prestaron; 'nos_deben' = prestamos nosotros)
+function prSaldos(dir) {
+  const origen  = dir==='debemos' ? 'recibido' : 'dado';
+  const cancela = dir==='debemos' ? 'devolucion' : 'recupero';
+  const G = {};
+  const grupo = (persona, cod, linea) => {
+    const p = persona || 'Sin asignar', k = p+'|'+cod;
+    return G[k] || (G[k] = {persona:p, cod, linea, prest:[], prestado:0, devuelto:0});
+  };
+  PREST.forEach(m => { if(m.op===origen) { const g = grupo(m.persona, m.cod, m.linea); g.prest.push(m); g.prestado += m.qty; } });
+  PREST.forEach(m => {
+    if(m.op!==cancela) return;
+    const cod = m.salda_cod || m.cod;
+    grupo(m.persona, cod, prLinea(cod)).devuelto += (m.salda_cant || m.qty);
+  });
+  return Object.values(G).map(g => {
+    g.saldo = g.prestado - g.devuelto;
+    // FIFO: lo devuelto cancela primero los préstamos más viejos → "desde" = el más viejo abierto
+    let resto = g.devuelto; g.desde = null;
+    g.prest.sort((a,b) => a.fecha.localeCompare(b.fecha)).forEach(p => {
+      if(g.desde) return;
+      if(resto >= p.qty) resto -= p.qty; else g.desde = p.fecha;
+    });
+    g.dias = prDias(g.desde);
+    return g;
+  });
+}
+
+function renderPrestamos() {
+  const body = document.getElementById('prest-body');
+  if(!body) return;
+  ['MONCAR','RMH'].forEach(l => {
+    const dl = document.getElementById('dl-'+l);
+    if(dl && !dl.children.length) dl.innerHTML = Object.values(PR_CANON[l]).map(r => '<option value="'+prEsc(r.COD)+'">'+prEsc(r.MARCA||r.DESC||'')+'</option>').join('');
+  });
+  const debemos = PR_DIR==='debemos';
+  const grupos = prSaldos(PR_DIR).filter(g => g.saldo!==0);
+  const btn = (on, txt, js) => '<button class="stk-btn'+(on?' active':'')+'" onclick="'+js+'">'+txt+'</button>';
+  let html = '<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:16px">'
+    + '<div class="stock-toggle" style="margin:0">'
+    +   btn(debemos, 'Lo que debemos', "PR_DIR='debemos';renderPrestamos()")
+    +   btn(!debemos, 'Lo que nos deben', "PR_DIR='nos_deben';renderPrestamos()")
+    + '</div>'
+    + '<div class="stock-toggle" style="margin:0">'
+    +   btn(PR_TAB==='abiertos', 'Saldos abiertos', "PR_TAB='abiertos';renderPrestamos()")
+    +   btn(PR_TAB==='historial', 'Historial', "PR_TAB='historial';renderPrestamos()")
+    + '</div>'
+    + '<button class="stk-btn active" style="margin-left:auto" onclick="prNuevo()">+ Registrar '+(debemos?'préstamo recibido':'préstamo dado')+'</button>'
+    + '</div>';
+
+  // Tarjetas por persona (click = filtrar)
+  const personas = PR_PERSONAS.concat(grupos.some(g => g.persona==='Sin asignar') ? ['Sin asignar'] : []);
+  html += '<div class="pr-cards">' + personas.map(p => {
+    const gs = grupos.filter(g => g.persona===p && g.saldo>0);
+    const uds = gs.reduce((a,g)=>a+g.saldo,0);
+    const desde = gs.map(g=>g.desde).filter(Boolean).sort()[0];
+    const col = uds<=0 ? 'var(--muted)' : prDias(desde)>60 ? 'var(--red)' : 'var(--accent3)';
+    return '<div class="pr-card'+(PR_PERSONA===p?' active':'')+'" onclick="PR_PERSONA=(PR_PERSONA===\\''+p+'\\'?null:\\''+p+'\\');renderPrestamos()">'
+      + '<div class="n">'+p+'</div>'
+      + '<div class="v" style="color:'+col+'">'+(uds>0 ? fmtN(uds)+' uds' : 'Al día')+'</div>'
+      + '<div class="s">'+(uds>0 ? gs.length+' código'+(gs.length>1?'s':'')+' · desde '+fmtFecha(desde) : (debemos?'no le debemos nada':'no nos debe nada'))+'</div>'
+      + '</div>';
+  }).join('') + '</div>';
+
+  body.innerHTML = html + (PR_TAB==='abiertos' ? prAbiertosHTML(grupos, debemos) : prHistorialHTML(debemos));
+}
+
+function prAbiertosHTML(grupos, debemos) {
+  const mes = prHoy().slice(0,7);
+  const cancela = debemos ? 'devolucion' : 'recupero';
+  const abiertos = grupos.filter(g => g.saldo>0);
+  const viejo = abiertos.reduce((m,g) => g.dias>m.dias ? g : m, {dias:-1});
+  const mesUds = PREST.filter(m => m.op===cancela && m.fecha.slice(0,7)===mes).reduce((a,m)=>a+(m.salda_cant||m.qty),0);
+  const kpis = '<div class="kpi-row cols4">'
+    + kpi(debemos?'Uds que debemos':'Uds que nos deben', fmtN(abiertos.reduce((a,g)=>a+g.saldo,0)), abiertos.length+' códigos abiertos', 'amber')
+    + kpi('Personas', fmtN(new Set(abiertos.map(g=>g.persona)).size), debemos?'a las que les debemos':'que nos deben', 'blue')
+    + kpi('Más viejo', viejo.dias>=0 ? viejo.dias+' días' : '—', viejo.dias>=0 ? viejo.persona+' · '+viejo.cod+' · '+fmtFecha(viejo.desde) : 'sin saldos abiertos', viejo.dias>60?'red':'green')
+    + kpi(debemos?'Devuelto este mes':'Recuperado este mes', fmtN(mesUds)+' uds', 'saldado en '+shortMes(mes), 'green')
+    + '</div>';
+
+  PR_ROWS = grupos.filter(g => !PR_PERSONA || g.persona===PR_PERSONA)
+    .sort((a,b) => (b.saldo>0)-(a.saldo>0) || b.dias-a.dias || a.persona.localeCompare(b.persona) || a.cod.localeCompare(b.cod));
+  if(!PR_ROWS.length) return kpis + '<div class="card"><div class="empty" style="padding:30px">'
+    + (PR_PERSONA ? PR_PERSONA+(debemos?': no le debemos nada.':': no nos debe nada.') : (debemos?'No le debemos nada a nadie.':'Nadie nos debe nada.')) + '</div></div>';
+
+  const rows = PR_ROWS.map((g,i) => {
+    const favor = g.saldo<0;
+    const dCol = g.dias>60 ? 'var(--red)' : g.dias>30 ? 'var(--accent3)' : 'var(--muted)';
+    const accion = favor
+      ? '<span style="font-size:11px;color:var(--muted)">'+fmtN(-g.saldo)+' uds a favor</span>'
+      : g.persona==='Sin asignar'
+        ? '<span style="font-size:11px;color:var(--muted)">asignar PERSONA en la hoja</span>'
+        : '<button class="stk-btn" style="padding:4px 12px;font-size:12px" onclick="prDevolver('+i+')">'+(debemos?'Devolver':'Recuperar')+'</button>';
+    return '<tr class="'+(g.dias>60&&!favor?'row-danger':g.dias>30&&!favor?'row-warn':'')+'">'
+      + '<td style="font-weight:600">'+g.persona+'</td>'
+      + '<td><span class="badge-linea '+(g.linea==='MONCAR'?'badge-mc':'badge-rmh')+'">'+g.linea+'</span></td>'
+      + '<td class="cod">'+g.cod+'</td>'
+      + '<td style="font-size:12px">'+prDesc(g.cod, g.linea)+'</td>'
+      + '<td class="num" style="color:var(--muted)">'+(g.desde?fmtFecha(g.desde):'—')+'</td>'
+      + '<td class="num">'+fmtN(g.prestado)+'</td>'
+      + '<td class="num" style="color:var(--muted)">'+fmtN(g.devuelto)+'</td>'
+      + '<td class="num" style="font-weight:700">'+(favor?'—':fmtN(g.saldo))+'</td>'
+      + '<td class="num" style="color:'+dCol+';font-weight:600">'+(g.desde?g.dias:'—')+'</td>'
+      + '<td>'+accion+'</td></tr>';
+  }).join('');
+  return kpis + '<div class="card"><div class="tbl-wrap"><table><thead><tr>'
+    + '<th>Persona</th><th>Línea</th><th>COD</th><th>Descripción</th><th class="num">Desde</th>'
+    + '<th class="num">Prestado</th><th class="num">'+(debemos?'Devuelto':'Recuperado')+'</th><th class="num">Saldo</th><th class="num">Días</th><th></th>'
+    + '</tr></thead><tbody>'+rows+'</tbody></table></div>'
+    + '<div class="note"><strong>Saldo</strong> = prestado − lo ya '+(debemos?'devuelto':'recuperado')+' (aunque se haya saldado con otro código). '
+    + '<strong>Desde / Días</strong>: el préstamo más viejo que sigue abierto (lo devuelto cancela primero lo más viejo). Naranja &gt; 30 días · rojo &gt; 60. '
+    + 'Hacé click en una persona para filtrar.</div></div>';
+}
+
+function prHistorialHTML(debemos) {
+  const ops = debemos ? ['recibido','devolucion'] : ['dado','recupero'];
+  const movs = PREST.filter(m => ops.includes(m.op) && (!PR_PERSONA || (m.persona||'Sin asignar')===PR_PERSONA));
+  const meses = [...new Set(movs.map(m=>m.fecha.slice(0,7)))].sort().reverse();
+  if(PR_HMES!=='ALL' && !meses.includes(PR_HMES)) PR_HMES = 'ALL';
+  const sel = movs.filter(m => PR_HMES==='ALL' || m.fecha.slice(0,7)===PR_HMES)
+    .sort((a,b) => b.fecha.localeCompare(a.fecha));
+  const selector = '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;font-size:12px;color:var(--muted)">Mes: '
+    + '<select onchange="PR_HMES=this.value;renderPrestamos()"><option value="ALL">Todos</option>'
+    + meses.map(m=>'<option value="'+m+'" '+(m===PR_HMES?'selected':'')+'>'+shortMes(m)+'</option>').join('') + '</select>'
+    + (PR_PERSONA ? '<span>Persona: <strong style="color:var(--text)">'+PR_PERSONA+'</strong></span>' : '')
+    + '<span style="margin-left:auto">'+sel.length+' movimientos</span></div>';
+  if(!sel.length) return '<div class="card">'+selector+'<div class="empty" style="padding:30px">Sin movimientos.</div></div>';
+  const rows = sel.map(m => {
+    const sale = m.op==='devolucion' || m.op==='dado';
+    const salda = (m.op==='devolucion'||m.op==='recupero') && m.salda_cod ? 'salda '+fmtN(m.salda_cant)+' de '+m.salda_cod : '';
+    return '<tr>'
+      + '<td class="num" style="color:var(--muted)">'+fmtFecha(m.fecha)+'</td>'
+      + '<td style="font-weight:600">'+(m.persona||'Sin asignar')+'</td>'
+      + '<td style="font-size:12px;color:'+(sale?'var(--red)':'var(--green)')+'">'+PR_OP_LBL[m.op]+'</td>'
+      + '<td><span class="badge-linea '+(m.linea==='MONCAR'?'badge-mc':'badge-rmh')+'">'+m.linea+'</span></td>'
+      + '<td class="cod">'+m.cod+'</td>'
+      + '<td style="font-size:12px">'+prDesc(m.cod, m.linea)+'</td>'
+      + '<td class="num" style="font-weight:600">'+(sale?'−':'+')+fmtN(m.qty)+'</td>'
+      + '<td style="font-size:12px;color:var(--muted)">'+(m.estado||'—')+'</td>'
+      + '<td style="font-size:12px;color:var(--accent3)">'+salda+'</td>'
+      + '<td style="font-size:12px;color:var(--muted)">'+prEsc(m.coment)+'</td></tr>';
+  }).join('');
+  return '<div class="card">'+selector+'<div class="tbl-wrap"><table style="white-space:nowrap"><thead><tr>'
+    + '<th class="num">Fecha</th><th>Persona</th><th>Movimiento</th><th>Línea</th><th>COD</th><th>Descripción</th>'
+    + '<th class="num">Cant. (stock)</th><th>Estado</th><th>Salda</th><th>Comentario</th>'
+    + '</tr></thead><tbody>'+rows+'</tbody></table></div>'
+    + '<div class="note"><strong>Cant. (stock)</strong>: + entra a tu depósito, − sale. <strong>Salda</strong>: cuando se devolvió con otro código o cantidad, qué deuda canceló.</div></div>';
+}
+
+// ── Ventanas de carga ────────────────────────────────────────────────────────
+function prNuevo() {
+  PR_FORM = {tipo:'nuevo', op: PR_DIR==='debemos'?'recibido':'dado',
+    persona: PR_PERSONAS.includes(PR_PERSONA) ? PR_PERSONA : '', fecha: prHoy(), comentario:'',
+    items:[{linea:'MONCAR', cod:'', cantidad:'', estado:'Embolsado'}]};
+  prModal();
+}
+function prDevolver(i) {
+  const g = PR_ROWS[i];
+  PR_FORM = {tipo:'cancela', op: PR_DIR==='debemos'?'devolucion':'recupero', persona:g.persona,
+    salda_cod:g.cod, saldo:g.saldo, salda_cant:g.saldo, mismo:true,
+    linea:g.linea, cod:g.cod, cantidad:g.saldo, estado:'Embolsado', fecha:prHoy(), comentario:''};
+  prModal();
+}
+function prCerrar() { PR_FORM = null; document.getElementById('prest-modal').innerHTML = ''; }
+function prSet(campo, v, rerender) { PR_FORM[campo] = v; if(rerender) prModal(); }
+function prSetItem(i, campo, v, rerender) {
+  PR_FORM.items[i][campo] = v;
+  if(campo==='linea' && !PR_ESTADOS[v].includes(PR_FORM.items[i].estado)) PR_FORM.items[i].estado = 'Embolsado';
+  if(rerender) prModal();
+}
+function prEstadoSel(linea, valor, onchange) {
+  return '<select onchange="'+onchange+'">'+PR_ESTADOS[linea].map(e=>'<option '+(e===valor?'selected':'')+'>'+e+'</option>').join('')+'</select>';
+}
+function prLineaSel(valor, onchange) {
+  return '<select onchange="'+onchange+'">'+['MONCAR','RMH'].map(l=>'<option '+(l===valor?'selected':'')+'>'+l+'</option>').join('')+'</select>';
+}
+function prModal() {
+  const f = PR_FORM, debemos = f.op==='recibido' || f.op==='devolucion';
+  let h = '';
+  if(f.tipo==='nuevo') {
+    h += '<h3>'+(debemos?'Registrar préstamo recibido':'Registrar préstamo dado')+'</h3>'
+      + '<div class="fm-row"><label>'+(debemos?'Nos prestó':'Le prestamos a')+'</label><select onchange="prSet(\\'persona\\',this.value)">'
+      +   '<option value="">— elegir —</option>'+PR_PERSONAS.map(p=>'<option '+(p===f.persona?'selected':'')+'>'+p+'</option>').join('')+'</select>'
+      +   '<label style="min-width:auto;margin-left:12px">Fecha</label><input type="date" max="'+prHoy()+'" value="'+f.fecha+'" onchange="prSet(\\'fecha\\',this.value)"></div>'
+      + '<div style="font-size:12px;color:var(--muted);margin:14px 0 8px">Códigos ('+(debemos?'entran':'salen')+' de tu depósito)</div>'
+      + f.items.map((it,i) => '<div class="fm-row">'
+          + prLineaSel(it.linea, 'prSetItem('+i+',\\'linea\\',this.value,true)')
+          + '<input list="dl-'+it.linea+'" placeholder="Código" value="'+prEsc(it.cod)+'" oninput="prSetItem('+i+',\\'cod\\',this.value)" style="width:120px">'
+          + '<input type="number" min="1" placeholder="Cant." value="'+prEsc(it.cantidad)+'" oninput="prSetItem('+i+',\\'cantidad\\',this.value)" style="width:80px">'
+          + prEstadoSel(it.linea, it.estado, 'prSetItem('+i+',\\'estado\\',this.value)')
+          + (f.items.length>1 ? '<button class="icon-btn flat" title="Quitar" onclick="PR_FORM.items.splice('+i+',1);prModal()">✕</button>' : '')
+          + '</div>').join('')
+      + '<button class="stk-btn" style="font-size:12px;padding:4px 12px" onclick="PR_FORM.items.push({linea:\\'MONCAR\\',cod:\\'\\',cantidad:\\'\\',estado:\\'Embolsado\\'});prModal()">+ Agregar código</button>';
+  } else {
+    h += '<h3>'+(debemos?'Devolver a ':'Recuperar de ')+f.persona+'</h3>'
+      + '<div style="font-size:13px;margin-bottom:14px">Saldo abierto de <strong class="cod" style="color:var(--accent)">'+f.salda_cod+'</strong> ('+prDesc(f.salda_cod)+'): <strong>'+fmtN(f.saldo)+' uds</strong></div>'
+      + '<div class="fm-row"><label>Uds a saldar</label><input type="number" min="1" max="'+f.saldo+'" value="'+prEsc(f.salda_cant)+'" oninput="prSet(\\'salda_cant\\',this.value)" style="width:90px">'
+      +   '<span style="font-size:12px;color:var(--muted)">de las '+fmtN(f.saldo)+' que '+(debemos?'debemos':'nos deben')+'</span></div>'
+      + '<div class="fm-row"><label></label><label style="min-width:auto;color:var(--text);cursor:pointer"><input type="checkbox" '+(f.mismo?'checked':'')+' onchange="prSet(\\'mismo\\',this.checked,true)"> '
+      +   (debemos?'Devuelvo':'Me devuelven')+' el mismo código y la misma cantidad</label></div>'
+      + (f.mismo ? '' :
+          '<div style="font-size:12px;color:var(--muted);margin:10px 0 8px">Qué '+(debemos?'sale de':'entra a')+' tu depósito en su lugar</div>'
+        + '<div class="fm-row">'+prLineaSel(f.linea, 'prSet(\\'linea\\',this.value);if(!PR_ESTADOS[this.value].includes(PR_FORM.estado))PR_FORM.estado=\\'Embolsado\\';prModal()')
+        +   '<input list="dl-'+f.linea+'" placeholder="Código" value="'+prEsc(f.cod)+'" oninput="prSet(\\'cod\\',this.value)" style="width:120px">'
+        +   '<input type="number" min="1" placeholder="Cant." value="'+prEsc(f.cantidad)+'" oninput="prSet(\\'cantidad\\',this.value)" style="width:80px"></div>')
+      + '<div class="fm-row"><label>Estado</label>'+prEstadoSel(f.mismo ? prLinea(f.salda_cod) : f.linea, f.estado, 'prSet(\\'estado\\',this.value)')
+      +   '<label style="min-width:auto;margin-left:12px">Fecha</label><input type="date" max="'+prHoy()+'" value="'+f.fecha+'" onchange="prSet(\\'fecha\\',this.value)"></div>';
+  }
+  h += '<div class="fm-row" style="margin-top:12px"><label>Comentario</label><input placeholder="opcional" value="'+prEsc(f.comentario)+'" oninput="prSet(\\'comentario\\',this.value)" style="flex:1"></div>'
+    + '<div class="fm-err" id="pr-err"></div>'
+    + '<div class="fm-actions"><button class="stk-btn" onclick="prCerrar()">Cancelar</button>'
+    + '<button class="stk-btn active" id="pr-guardar" onclick="prGuardar()">Guardar</button></div>';
+  document.getElementById('prest-modal').innerHTML = '<div class="modal-bg"><div class="modal">'+h+'</div></div>';
+}
+// Pasa lo tipeado al código real del stock ("cf917" → "CF 917"); null si no existe
+function prCanon(cod, linea) { const r = PR_CANON[linea][prKey(cod)]; return r ? r.COD : null; }
+function prGuardar() {
+  const f = PR_FORM, err = document.getElementById('pr-err');
+  const fallo = m => { err.textContent = m; };
+  let items = [];
+  if(f.tipo==='nuevo') {
+    if(!f.persona) return fallo('Elegí la persona.');
+    const cargados = f.items.filter(it => String(it.cod).trim() || String(it.cantidad).trim());
+    if(!cargados.length) return fallo('Cargá al menos un código.');
+    for(const it of cargados) {
+      const cod = prCanon(it.cod, it.linea), q = parseInt(it.cantidad, 10);
+      if(!cod) return fallo('El código "'+it.cod+'" no existe en '+it.linea+'.');
+      if(!(q>0)) return fallo('Cantidad inválida en '+cod+'.');
+      items.push({linea:it.linea, cod, cantidad:q, estado:it.estado});
+    }
+  } else {
+    const sc = parseInt(f.salda_cant, 10);
+    if(!(sc>0) || sc>f.saldo) return fallo('Uds a saldar: entre 1 y '+f.saldo+'.');
+    const lineaFis = f.mismo ? prLinea(f.salda_cod) : f.linea;
+    const cod = f.mismo ? f.salda_cod : prCanon(f.cod, f.linea);
+    const q = f.mismo ? sc : parseInt(f.cantidad, 10);
+    if(!cod) return fallo('El código "'+f.cod+'" no existe en '+f.linea+'.');
+    if(!(q>0)) return fallo('Cantidad entregada inválida.');
+    items.push({linea:lineaFis, cod, cantidad:q, estado:f.estado, salda_cod:f.salda_cod, salda_cant:sc});
+  }
+  if(!f.fecha || f.fecha > prHoy()) return fallo('Fecha inválida.');
+  const btn = document.getElementById('pr-guardar');
+  btn.disabled = true; btn.textContent = 'Guardando...'; fallo('');
+  fetch('/prestamos/registrar', {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({op:f.op, persona:f.persona, fecha:f.fecha, items, comentario:f.comentario})})
+    .then(r => r.json())
+    .then(d => {
+      if(d.ok) {
+        // Al recargar, volver a esta página (si no, se abre el Overview)
+        try { sessionStorage.setItem('moncar_goto', 'prestamos'); sessionStorage.setItem('moncar_prdir', PR_DIR); } catch(e) {}
+        PR_FORM = null; location.reload(); return;
+      }
+      fallo('No se pudo guardar: '+(d.error||'error desconocido')); btn.disabled = false; btn.textContent = 'Guardar';
+    })
+    .catch(() => { fallo('Sin conexión con el servidor. ¿Abriste el dashboard con abrir_dashboard_drive.bat?'); btn.disabled = false; btn.textContent = 'Guardar'; });
+}
+
 let LITA_COPY_TXT = '';
 function litaCopiar(btn) {
   const ok = () => { btn.textContent = '¡Copiado!'; setTimeout(()=>{ btn.textContent = 'Copiar lista'; }, 1800); };
@@ -1714,23 +2117,96 @@ function litaCopiar(btn) {
   else fallback();
 }
 
-function litaEntregar(cod, btn) {
-  const inp = document.getElementById('lita-q-'+cod.split(' ').join('_'));
-  const q = parseInt(inp && inp.value, 10);
-  const max = litaPendQty(cod);
-  if(!(q>0) || q>max) { alert('Cantidad inválida: tiene que ser entre 1 y '+max+'.'); return; }
-  if(!confirm('¿Marcar '+q+' uds de '+cod+' como entregadas a Lita?\\n\\nSe restan del embolsado en depósito (se escribe en STOCK_MONCAR).')) return;
+// Entrega en lote, imputada por remito: cada renglón del desplegable es un
+// par (código, remito). "Entregar seleccionados" → un solo POST /lita/entregar
+// con {items:[{cod,remito,cantidad}]}. Todo-o-nada en el servidor.
+function litaKey(cod, remito) { return cod+'|'+remito; }
+function litaRem(k) {
+  const p = k.indexOf('|'), o = LITA_PEND[k.slice(0,p)];
+  return o ? o.rems[k.slice(p+1)] : null;
+}
+function litaQtyDe(k) {
+  const x = litaRem(k); if(!x) return 0;
+  return (k in LITA_QTY) ? LITA_QTY[k] : x.qty;
+}
+function litaAbrir(el) {
+  const c = el.dataset.cod;
+  if(LITA_OPEN.has(c)) LITA_OPEN.delete(c); else LITA_OPEN.add(c);
+  renderLita();
+}
+function litaAbrirTodos(abrir) {
+  Object.keys(LITA_PEND).forEach(c => { if(abrir) LITA_OPEN.add(c); else LITA_OPEN.delete(c); });
+  renderLita();
+}
+function litaMarcarCod(cod, on) {
+  Object.keys(LITA_PEND[cod].rems).forEach(r => {
+    const k = litaKey(cod, r);
+    if(on && LITA_PEND[cod].rems[r].qty>0) LITA_SEL.add(k); else LITA_SEL.delete(k);
+  });
+}
+function litaTildarCod(chk) { litaMarcarCod(chk.dataset.cod, chk.checked); renderLita(); }
+function litaTildarRem(chk) {
+  if(chk.checked) LITA_SEL.add(chk.dataset.k); else LITA_SEL.delete(chk.dataset.k);
+  renderLita();
+}
+function litaTildarTodos(chk) {
+  // Solo los códigos listos (OK); los que faltan embolsar se tildan a mano.
+  document.querySelectorAll('.lita-chk-cod').forEach(c => { if(c.dataset.ok==='1') litaMarcarCod(c.dataset.cod, chk.checked); });
+  renderLita();
+}
+function litaCantidad(inp) {
+  const q = parseInt(inp.value, 10);
+  LITA_QTY[inp.dataset.k] = q>0 ? q : 0;
+  // Sin redibujar la tabla (se perdería el foco o el click en "Entregar").
+  const x = litaRem(inp.dataset.k), h = inp.closest('tr').querySelector('.lita-hint');
+  if(x && h) h.textContent = (q>0 && q<x.qty) ? 'Parcial: quedan '+fmtN(x.qty-q)+' pendientes de este remito' : '';
+  litaActualizarBoton();
+}
+function litaSeleccion() {
+  return [...LITA_SEL].map(k => {
+    const x = litaRem(k); if(!x) return null;
+    return {cod: k.slice(0, k.indexOf('|')), remito: x.remito, num: x.num, cantidad: litaQtyDe(k), max: x.qty};
+  }).filter(Boolean);
+}
+function litaActualizarBoton() {
+  const btn = document.getElementById('lita-btn-lote');
+  if(!btn) return;
+  const sel = litaSeleccion();
+  const uds = sel.reduce((a,s)=>a+(s.cantidad>0?s.cantidad:0),0);
+  const nCod = new Set(sel.map(s=>s.cod)).size;
+  btn.disabled = !sel.length;
+  btn.textContent = sel.length ? 'Entregar '+nCod+' código'+(nCod>1?'s':'')+' · '+sel.length+' remito'+(sel.length>1?'s':'')+' · '+fmtN(uds)+' uds' : 'Entregar seleccionados';
+  document.querySelectorAll('.lita-chk-cod').forEach(c => { c.indeterminate = c.dataset.part==='1'; });
+  const all = document.getElementById('lita-chk-all');
+  if(all) {
+    const oks = [...document.querySelectorAll('.lita-chk-cod')].filter(c=>c.dataset.ok==='1');
+    all.checked = oks.length>0 && oks.every(c=>c.checked);
+  }
+}
+function litaEntregarLote(btn) {
+  const sel = litaSeleccion();
+  if(!sel.length) return;
+  const malos = sel.filter(s => !(s.cantidad>0) || s.cantidad>s.max);
+  if(malos.length) { alert('Cantidad inválida en: '+malos.map(s=>s.cod+' remito '+(s.num||'s/n')+' (entre 1 y '+s.max+')').join(', ')); return; }
+  const uds = sel.reduce((a,s)=>a+s.cantidad,0);
+  const lista = sel.slice().sort((a,b)=>a.cod.localeCompare(b.cod) || a.num.localeCompare(b.num))
+    .map(s => s.cod+' x '+fmtN(s.cantidad)+' — remito '+(s.num||'s/n')+' ('+(LITA_CLI[s.num]||'?')+')'+(s.cantidad<s.max?' PARCIAL, de '+fmtN(s.max):''));
+  const muestra = lista.length>25 ? lista.slice(0,25).concat(['... y '+(lista.length-25)+' más']) : lista;
+  if(!confirm('¿Marcar como entregadas a Lita '+fmtN(uds)+' uds ('+sel.length+' remitos)?\\n\\n'+muestra.join('\\n')
+      +'\\n\\nSe restan del embolsado en depósito (se escribe en STOCK_MONCAR).')) return;
+  const txt = btn.textContent;
   btn.disabled = true; btn.textContent = 'Guardando...';
-  fetch('/lita/entregar', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({cod, cantidad:q})})
+  fetch('/lita/entregar', {method:'POST', headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({items: sel.map(s=>({cod:s.cod, remito:s.remito, cantidad:s.cantidad}))})})
     .then(r => r.json())
     .then(d => {
       if(d.ok) { location.reload(); return; }
       alert('No se pudo guardar: '+(d.error||'error desconocido'));
-      btn.disabled = false; btn.textContent = 'Entregar';
+      btn.disabled = false; btn.textContent = txt;
     })
     .catch(() => {
       alert('No se pudo conectar con el servidor. ¿Abriste el dashboard con abrir_dashboard_drive.bat?');
-      btn.disabled = false; btn.textContent = 'Entregar';
+      btn.disabled = false; btn.textContent = txt;
     });
 }
 
@@ -3239,6 +3715,7 @@ function renderPage(name) {
   if(name==='clientes')  renderClientes();
   if(name==='stock')     renderStock();
   if(name==='pl')        { if(PL_MODO==='economica') renderPL(); else renderPLFinanciera(); }
+  if(name==='prestamos') renderPrestamos();
 }
 
 function showPage(name) {
@@ -3346,6 +3823,16 @@ function truncate(str, n) {
   // Bind period selector and initialize
   bindPeriod();
   initPeriod();
+
+  // Vuelta a Préstamos después de guardar un movimiento (lo setea prGuardar; una sola vez)
+  try {
+    const goto = sessionStorage.getItem('moncar_goto');
+    if(goto === 'prestamos') {
+      sessionStorage.removeItem('moncar_goto');
+      PR_DIR = sessionStorage.getItem('moncar_prdir') || 'debemos';
+      showPage('prestamos');
+    }
+  } catch(e) {}
 })();
 </script>
 </body>

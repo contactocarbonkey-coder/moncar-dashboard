@@ -59,7 +59,8 @@ claude MONCAR RMH/
 ├── .claude/
 │   ├── generar_dashboard_drive.py   ← ACTIVO: lee Sheets → dashboard_drive.html
 │   ├── servidor_drive.py            ← servidor 8051, expone /refresh (ícono ↻ arriba a la derecha) y POST /lita/entregar
-│   ├── entregas_lita.py             ← ÚNICA escritura en Sheets: marca entregas a Lita
+│   ├── entregas_lita.py             ← escribe en Sheets: marca entregas a Lita
+│   ├── prestamos.py                 ← escribe en Sheets: préstamos entre zonas (página Préstamos)
 │   ├── generar_dashboard.py         ← versión Excel local (sin uso activo)
 │   ├── servidor.py                  ← servidor 8050
 │   └── settings.local.json
@@ -110,7 +111,10 @@ público, no hay login de por medio).
 **Excepción de escritura (2026-09-25)**: el botón "Entregar" de la tarjeta **Mercadería
 Lita** (Overview) escribe en `STOCK_MONCAR!Movimientos` (CONFIRMACIÓN → Entregado +
 FECHA ENTREGA) vía `entregas_lita.py`, con la cuenta de servicio de `remitos-app` (lee
-`remitos-app/.env.local`; requiere `pip install google-auth`). Detalle en `REFERENCIA.md`.
+`remitos-app/.env.local`; requiere `pip install google-auth`). Desde 2026-10-06 también
+la página **Préstamos** (`prestamos.py`, `POST /prestamos/registrar`) escribe en
+`Movimientos` de STOCK_MONCAR y STOCK_RMH (columnas nuevas PERSONA / SALDA COD / SALDA
+CANT). Detalle de los dos en `REFERENCIA.md`.
 
 ## Gotchas vigentes
 
@@ -148,6 +152,9 @@ FECHA ENTREGA) vía `entregas_lita.py`, con la cuenta de servicio de `remitos-ap
 
 ## Pendientes abiertos
 
+- [ ] **Correr una vez** (desde `remitos-app/`) `npx tsx scripts/preparar-prestamos.ts
+      --apply`: columnas PERSONA/SALDA en Movimientos + datos de los préstamos viejos.
+      Sin esto la página Préstamos muestra todo como "Sin asignar" y no deja guardar.
 
 - [ ] Decidir cuál dashboard queda como definitivo (Drive vs Excel local) o si conviven.
 - [ ] Fijo mensual de Andi ($400.000) no implementado en el P&L.

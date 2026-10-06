@@ -5,6 +5,36 @@ es la memoria de "por qué está así". Fechas absolutas.
 
 ---
 
+## Entregas a Lita imputadas por remito — 2026-10-06 (solo versión Drive)
+
+**Problema** (detectado por Franco el mismo día de la entrega en lote): con cantidad
+suelta por código, el backend repartía FIFO entre remitos y, con fechas iguales,
+desempataba por orden de fila. Franco entregó remito 4280 (AYL MAQUINAS) completo y el
+sistema imputó CF 674 y CF 020 en parte a los remitos 4279/4275 y partió filas del 4280.
+**Fix**: la unidad de entrega pasa a ser (código, remito) — desplegable por código con
+remito + cliente, cantidad por remito (parcial solo dentro del mismo remito). Verificado
+con simulación contra la hoja real (escritura interceptada) y Edge headless sobre el HTML
+de prueba.
+
+**Corrección de datos** (el modo automático de Claude no permitió escribir en el Sheet;
+la hace Franco a mano en `STOCK_MONCAR!Movimientos`): F738=40, F742=30; filas 664, 730 y
+731 → L=Pendiente y M vacío; borrar filas 855 y 856 (partes Pendiente del 4280).
+**Hecha y verificada el mismo día** (relectura de la hoja: valores correctos, hoja en
+855 filas, sin filas sueltas del 4280).
+
+## Entrega en lote de Mercadería Lita — 2026-10-06 (solo versión Drive)
+
+**Pedido de Franco**: dejar de marcar entregas de a un código. Casillas por fila +
+"Entregar seleccionados"; el botón individual se sacó (decisión de Franco: una sola forma
+de hacerlo). La casilla del encabezado tilda solo los OK; las casillas arrancan vacías.
+Backend: `entregas_lita.entregar_varios()` — una lectura, un `batchUpdate`, todo-o-nada
+(si un código pide más de lo pendiente no se escribe nada). Las filas partidas por
+entregas parciales se agregan consecutivas al final. Verificado con simulación contra la
+hoja real interceptando la escritura (3 códigos, 1 completo + 2 parciales) y `node --check`
+del JS generado.
+
+---
+
 ## Indicador "Tableros vendidos" en el Overview — 2026-10-05 (los dos generadores)
 
 **Pedido de Franco**, con la condición explícita de que nada de lo existente cambie.
@@ -46,6 +76,26 @@ dashboard leía la col 0 por fallback, no se rompió.
 
 ---
 
+## Página Préstamos — 2026-10-06 (solo Drive)
+
+**Pedido de Franco**: registrar y gestionar desde el dashboard los préstamos de
+mercadería con las otras zonas (Luvi, Lita, Naza, Mapi, Fede), MONCAR y RMH, en las dos
+direcciones, con registro claro de cuánto se debe y desde cuándo. Primer paso de "hacer
+TODO desde el dashboard". Detalle en `REFERENCIA.md` → Préstamos.
+
+- **Encontrado al relevar**: quién prestó estaba solo en COMENTARIOS (texto libre,
+  inconsistente) y 3 devoluciones (CF 179 x20, CE 045 x14, CF 033 x5) se habían cargado
+  sin ESTADO → la deuda bajaba pero el stock no (39 uds de más). Franco confirmó que se
+  devolvieron embolsadas. Personas de los préstamos viejos: las dio Franco (CF 971,
+  CF 179, CF 033 → Lita; RM 717 → Naza).
+- **Decisiones de Franco**: incluir RMH y "préstamo dado"; las devoluciones a veces son
+  con otro código/cantidad ("otra cosa que el otro quiera") → columnas SALDA COD/CANT.
+- **Sin tocar**: fórmulas de `Stock`, `remitos-app`, `entregas_lita.py`, resto de
+  páginas. Verificado comparando la versión commiteada vs la nueva con los mismos datos.
+- Solo versión Drive (depende de escribir en Sheets), igual que Lita.
+
+---
+
 ## Menú lateral plegable + refresh como ícono — 2026-10-02 (los dos generadores)
 
 **Pedido de Franco** (con captura de referencia de otra app): pasar las pestañas de
@@ -56,6 +106,8 @@ muchas páginas (costos, contabilidad, rendición, compras, embolsado…). Sacar
 - Aplicado con el mismo patch a `generar_dashboard_drive.py` y `generar_dashboard.py`
   (bloques idénticos; la versión Excel usa finales CRLF). Servidores: `servidor_drive.py`
   conserva solo el auto-refresh de 4 min; `servidor.py` ya no inyecta nada.
+  (2026-10-06: Franco pidió sacar también el auto-refresh — `servidor_drive.py` ya no
+  inyecta nada; los datos se actualizan solo con el ícono ↻.)
 - Verificado: 33 vistas (todas las páginas × 5 períodos) sin errores JS; JS de los dos
   generadores pasa `node --check`; capturas con menú abierto, plegado, tema claro y
   servido por HTTP (ícono refresh visible).

@@ -110,8 +110,8 @@ plegado = solo íconos, 64px) agrupado por secciones: General / Ventas / Product
 stock / Plata. Barra superior (`.topbar`): breadcrumb `#crumb` (sección › página),
 selector de vendedores, fecha de datos, ícono refresh (`refreshData()` → `/refresh`,
 oculto si el HTML se abre como archivo) y tema. Los botones grandes "Actualizar datos" y
-"PDF" que inyectaba el servidor se sacaron; el servidor Drive solo inyecta el auto-refresh
-de 4 min.
+"PDF" que inyectaba el servidor se sacaron (2026-10-02), y el auto-refresh de 4 min
+también (2026-10-06, pedido de Franco): los datos se actualizan **solo** con el ícono.
 
 **Sumar una página nueva**: (1) un `<button class="sb-item" data-page="X" data-sec="Sección"
 title="Nombre" onclick="showPage('X')">` con su ícono SVG dentro del `<nav class="sb-nav">`;
@@ -152,6 +152,38 @@ mostrado = `max(0, EMB_DEP − pendLita) + PREM_DEP`. Si el estándar no alcanza
 `urgentLita`: sube al tope (después de "Maxi sin stock"), rojo, "· Lita: faltan X", y el
 faltante se suma a "Embolsar ahora". Columna "Lita pend.".
 
+### Préstamos (página propia, solo versión Drive — 2026-10-06)
+
+Préstamos de mercadería con las otras zonas de la familia (**Luvi, Lita, Naza, Mapi,
+Fede**; la nuestra es la zona "Juli"). MONCAR y RMH, en las dos direcciones.
+
+- **Fuente**: filas de `Movimientos` (STOCK_MONCAR y STOCK_RMH) con los 4 tipos que ya
+  existían — `Préstamo recibido` / `Devolución préstamo recibido` (lo que debemos) y
+  `Préstamo dado` / `Recupero préstamo dado` (lo que nos deben). Las fórmulas de `Stock`
+  ya los suman/restan según ESTADO; **no se tocaron**.
+- **Columnas agregadas** al final de `Movimientos` (por nombre, nadie las lee por
+  posición): `PERSONA` (desplegable), `SALDA COD`, `SALDA CANT`. En una devolución, SALDA
+  dice qué deuda cancela — se puede devolver con otro código y otra cantidad (Franco a
+  veces paga con "otra cosa que el otro quiera"). Vacías = mismo COD y CANTIDAD.
+  MONCAR: N/O/P. RMH: I/J/K.
+- **Saldo** por persona+código = prestado − Σ SALDA CANT (o CANTIDAD) de las
+  devoluciones con SALDA COD (o COD) = ese código. "Desde" = préstamo más viejo abierto
+  (FIFO). Calculado en JS (`prSaldos()`), lectura en `read_prestamos()`.
+- **UI**: toggle "Lo que debemos / Lo que nos deben", "Saldos abiertos / Historial",
+  tarjetas por persona (click filtra), botón "+ Registrar préstamo" (varios códigos por
+  carga, autocompletado y validación contra Stock) y "Devolver/Recuperar" por fila
+  (cantidad parcial; opción "otro código").
+- **Escritura**: `prestamos.py` → `POST /prestamos/registrar`. Valida persona, fecha
+  (no futura), código existente, ESTADO válido por línea (RMH no tiene Premium) y que no
+  se salde más de lo abierto. Escribe campo por campo al final de la hoja (no toca col A
+  ni ALERTA). Después de guardar vuelve a la página (sessionStorage `moncar_goto`).
+- **Ojo**: la columna `DEBO (recibido)` de `Stock` resta las devoluciones por su COD
+  físico, así que con una devolución "con otro código" queda desfasada. El dashboard no
+  la muestra; la verdad de los saldos es la página Préstamos.
+- Preparación de la hoja: `remitos-app/scripts/preparar-prestamos.ts` (columnas,
+  desplegable, PERSONA de los 17 préstamos viejos, ESTADO=Embolsado en 3 devoluciones
+  que se habían cargado sin estado y no restaban stock).
+
 ### Mercadería Lita (Overview, solo versión Drive)
 
 Qué le debe Franco a Lita: ventas MONCAR de Maxi (salen del stock físico de Lita).
@@ -161,13 +193,23 @@ al historial agrupado por `FECHA ENTREGA` (col M), o por mes de venta si no tien
 (entregas previas al 2026-09-25, marcadas "aprox."). CONFIRMACIÓN vacía = se ignora.
 
 - **Pestaña Pendiente**: por código — pendiente, desde, embolsado estándar en depósito,
-  sin embolsar, "¿Embolsar?" (faltan = pendiente − max(0, EMB_DEP)), y botón
-  **Entregar** con cantidad editable (parcial permitido). Botón **Copiar lista**
+  sin embolsar, "¿Embolsar?" (faltan = pendiente − max(0, EMB_DEP)). **Entrega en lote
+  imputada por remito** (2026-10-06): cada código se despliega (▸) en un renglón por
+  remito pendiente con su cliente (`LITA_CLI`, cruce N° remito → `CLIENTE` de `V.raw`),
+  casilla y cantidad (por defecto el total del remito; menos = parcial de ESE remito).
+  Tildar el código tilda todos sus remitos; la casilla del encabezado tilda los códigos
+  OK (los rojos a mano); arrancan sin tildar. Botón **Entregar seleccionados** ("N
+  códigos · M remitos · X uds"). Estado: `LITA_SEL` / `LITA_QTY` (clave `"cod|remito"`),
+  `LITA_OPEN`. El remito es el texto de COMENTARIOS ("Remito N° 4280"). Botón **Copiar lista**
   (`litaCopiar()`, 2026-10-02): copia "COD x cant" ordenado por código + total, con
   negrita de WhatsApp, para mandarle a Lita.
 - **Pestaña Historial**: selector de mes de entrega (o Todos), uds por código y fechas.
-- **Escritura**: `litaEntregar()` → `POST /lita/entregar` (`servidor_drive.py`) →
-  `.claude/entregas_lita.py`: lee la hoja por la API (no gviz), marca FIFO por fecha,
+- **Escritura**: `litaEntregarLote()` → `POST /lita/entregar` con
+  `{items:[{cod,remito,cantidad},...]}` → `entregas_lita.entregar_varios()`:
+  **todo-o-nada** — valida todo antes de escribir y manda un único `batchUpdate`. Con
+  `remito`, solo toca filas de ese código Y ese COMENTARIOS (nunca imputa a otra venta);
+  sin `remito` (compatibilidad) reparte FIFO entre todos los remitos del código — eso
+  causó el error del 2026-10-06, ver `HISTORIAL.md`. Lee la hoja por la API (no gviz), marca FIFO por fecha,
   parte la última fila si hace falta (fila nueva Pendiente al final, col A vacía porque
   es ARRAYFORMULA), escribe `Entregado` + fecha, espera 2s y regenera. Solo funciona con
   el dashboard servido por `abrir_dashboard_drive.bat` (no abriendo el HTML suelto).

@@ -97,14 +97,40 @@ def _fecha_key(txt):
 
 
 def entregar(cod, cantidad):
-    """Pasa `cantidad` uds pendientes de `cod` a Entregado, de la fila mas vieja
-    a la mas nueva. Si la ultima no se entrega entera, la parte en dos: la
-    fila original queda Entregado con lo entregado y se agrega una fila nueva
-    Pendiente con el resto (mismo remito). Devuelve un resumen."""
-    cod = _norm(cod)
-    cantidad = int(cantidad)
-    if cantidad <= 0:
-        raise ValueError('La cantidad tiene que ser mayor a 0')
+    """Atajo para un solo codigo (ver entregar_varios)."""
+    res = entregar_varios([{'cod': cod, 'cantidad': cantidad}])
+    return {'cod': res['items'][0]['cod'], 'entregado': res['uds'],
+            'filas': res['filas'], 'partida': res['items'][0]['partida']}
+
+
+def entregar_varios(items):
+    """Pasa a Entregado las uds pendientes de varios codigos de una vez:
+    items = [{'cod': 'CF 123', 'remito': 'Remito N° 4280', 'cantidad': 10}, ...].
+    Con `remito` (lo que manda el dashboard) solo se tocan las filas de ese
+    remito (columna COMENTARIOS), asi una entrega no se imputa a otra venta.
+    Sin `remito` (compatibilidad) se toma FIFO entre todos los remitos del codigo.
+    De la fila mas vieja a la mas nueva; si la ultima no se entrega entera, la
+    parte en dos: la original queda Entregado con lo entregado y se agrega una
+    fila nueva Pendiente con el resto (mismo remito).
+    Todo-o-nada: se valida la lista entera antes de escribir y se manda en un
+    solo batchUpdate, asi un codigo invalido no deja entregas a medias."""
+    pedido = {}
+    for it in items or []:
+        cod = _norm(it.get('cod', ''))
+        # remito ausente = FIFO entre todos; remito '' = filas sin comentario
+        rem = _norm(it['remito']) if it.get('remito') is not None else None
+        cantidad = int(it.get('cantidad', 0))
+        if not cod:
+            raise ValueError('Falta el codigo')
+        if cantidad <= 0:
+            raise ValueError('%s: la cantidad tiene que ser mayor a 0' % cod)
+        pedido[(cod, rem)] = pedido.get((cod, rem), 0) + cantidad
+    if not pedido:
+        raise ValueError('No hay codigos seleccionados')
+    # Un codigo "sin remito" agarraria filas de los remitos pedidos aparte.
+    for cod, rem in pedido:
+        if rem is None and any(c == cod and r is not None for c, r in pedido):
+            raise ValueError('%s: no se puede mezclar entrega con y sin remito' % cod)
 
     with _lock:
         # FORMATTED_VALUE: fechas/año-mes vuelven como se ven ("25/09/2026",
@@ -134,42 +160,58 @@ def entregar(cod, cantidad):
         def cel(f, c):
             return str(f[c]).strip() if c < len(f) else ''
 
-        pend = []
+        pend = {k: [] for k in pedido}
         for i, f in enumerate(filas[ih + 1:], start=ih + 1):
-            if (cel(f, c_tipo) == 'Salida Lita' and cel(f, c_est) == 'Embolsado'
-                    and cel(f, c_conf) == 'Pendiente' and _norm(cel(f, c_cod)) == cod):
-                pend.append((i, f))
-        total = sum(_num(cel(f, c_cant)) for _, f in pend)
-        if cantidad > total:
-            raise ValueError('%s tiene %d uds pendientes, no se pueden entregar %d' % (cod, total, cantidad))
-        pend.sort(key=lambda t: (_fecha_key(cel(t[1], c_fecha)), t[0]))
+            if not (cel(f, c_tipo) == 'Salida Lita' and cel(f, c_est) == 'Embolsado'
+                    and cel(f, c_conf) == 'Pendiente'):
+                continue
+            cod, rem = _norm(cel(f, c_cod)), _norm(cel(f, c_com))
+            if (cod, rem) in pend:
+                pend[(cod, rem)].append((i, f))
+            elif (cod, None) in pend:
+                pend[(cod, None)].append((i, f))
+
+        # Validar todo antes de escribir nada.
+        errores = []
+        for (cod, rem), cantidad in pedido.items():
+            total = sum(_num(cel(f, c_cant)) for _, f in pend[(cod, rem)])
+            if cantidad > total:
+                errores.append('%s%s tiene %d uds pendientes, no se pueden entregar %d'
+                               % (cod, ' (' + rem.title() + ')' if rem else '', total, cantidad))
+        if errores:
+            raise ValueError('No se guardo nada. ' + '; '.join(errores))
 
         hoy = datetime.now().strftime('%d/%m/%Y')
-        updates, nueva = [], None
-        resto, tocadas = cantidad, 0
-        for i, f in pend:
-            if resto <= 0:
-                break
-            tocadas += 1
-            fila_hoja = i + 1
-            qty = int(_num(cel(f, c_cant)))
-            if qty > resto:
-                updates.append({'range': '%s!%s%d' % (HOJA, _col(c_cant), fila_hoja), 'values': [[resto]]})
-                nueva = {c_fecha: cel(f, c_fecha), c_tipo: 'Salida Lita', c_est: 'Embolsado',
-                         c_cod: cel(f, c_cod), c_cant: qty - resto, c_com: cel(f, c_com),
-                         c_am: cel(f, c_am), c_conf: 'Pendiente'}
-            updates.append({'range': '%s!%s%d' % (HOJA, _col(c_conf), fila_hoja), 'values': [['Entregado']]})
-            updates.append({'range': '%s!%s%d' % (HOJA, _col(c_fent), fila_hoja), 'values': [[hoy]]})
-            resto -= min(qty, resto)
+        updates, nuevas, resumen, tocadas_tot = [], [], [], 0
+        for (cod, rem), cantidad in pedido.items():
+            lista = sorted(pend[(cod, rem)], key=lambda t: (_fecha_key(cel(t[1], c_fecha)), t[0]))
+            resto, tocadas, partida = cantidad, 0, False
+            for i, f in lista:
+                if resto <= 0:
+                    break
+                tocadas += 1
+                fila_hoja = i + 1
+                qty = int(_num(cel(f, c_cant)))
+                if qty > resto:
+                    updates.append({'range': '%s!%s%d' % (HOJA, _col(c_cant), fila_hoja), 'values': [[resto]]})
+                    nuevas.append({c_fecha: cel(f, c_fecha), c_tipo: 'Salida Lita', c_est: 'Embolsado',
+                                   c_cod: cel(f, c_cod), c_cant: qty - resto, c_com: cel(f, c_com),
+                                   c_am: cel(f, c_am), c_conf: 'Pendiente'})
+                    partida = True
+                updates.append({'range': '%s!%s%d' % (HOJA, _col(c_conf), fila_hoja), 'values': [['Entregado']]})
+                updates.append({'range': '%s!%s%d' % (HOJA, _col(c_fent), fila_hoja), 'values': [[hoy]]})
+                resto -= min(qty, resto)
+            tocadas_tot += tocadas
+            resumen.append({'cod': cod, 'remito': rem or '', 'entregado': cantidad, 'partida': partida})
 
-        if nueva:
-            # Misma logica que appendRows() de remitos-app: fila exacta al final.
-            # La columna A (Nº) es ARRAYFORMULA — se deja vacia a proposito.
-            fila_nueva = len(filas) + 1
-            ancho = max(nueva) + 1
+        # Misma logica que appendRows() de remitos-app: filas exactas al final.
+        # La columna A (Nº) es ARRAYFORMULA — se deja vacia a proposito.
+        for k, nueva in enumerate(nuevas):
+            fila_nueva = len(filas) + 1 + k
             desde = min(nueva)
-            valores = [nueva.get(c, '') for c in range(desde, ancho)]
+            valores = [nueva.get(c, '') for c in range(desde, max(nueva) + 1)]
             updates.append({'range': '%s!%s%d' % (HOJA, _col(desde), fila_nueva), 'values': [valores]})
 
         _api('POST', '/values:batchUpdate', {'valueInputOption': 'USER_ENTERED', 'data': updates})
-        return {'cod': cod, 'entregado': cantidad, 'filas': tocadas, 'partida': bool(nueva)}
+        return {'items': resumen, 'codigos': len({c for c, _ in pedido}), 'uds': sum(pedido.values()),
+                'filas': tocadas_tot, 'partidas': len(nuevas)}
