@@ -13,6 +13,7 @@ router hacia los otros dos.
 | **App remitos** | Activo | `remitos-app/` (repo git propio) | Vercel / `npm run dev` | `remitos-app/CLAUDE.md` |
 | **Página web / catálogo** | Activo, en vivo en `moncar-rmh.com.ar` desde 2026-09-28 | `pagina-web/` | ver `pagina-web/CLAUDE.md` | `pagina-web/CLAUDE.md` |
 | **Web multi-zona** (Next.js + Supabase) | En desarrollo desde 2026-10-05 — solo panel admin, local | `moncar-web/` (git propio) | `npm run dev` | `moncar-web/CLAUDE.md` |
+| **ERP zona Juli** (Next.js + Supabase propio `dbidxedrwlwbbwcxnxza`) | En prueba desde 2026-10-10, publicado en **moncar-erp.vercel.app** — interfaz del dashboard + Movimientos, Costos, Administración; espejo de los Sheets hasta el corte | `moncar-erp/` (repo `contactocarbonkey-coder/moncar-erp`, gitignored acá) | Vercel / `moncar-erp/abrir_erp.bat` | `moncar-erp/CLAUDE.md` |
 
 Si la tarea es de **remitos**, leer `remitos-app/CLAUDE.md` primero — nada de eso vive
 acá. Si la tarea es de la **página web / catálogo** actual, leer `pagina-web/CLAUDE.md`
@@ -156,7 +157,15 @@ CANT). Detalle de los dos en `REFERENCIA.md`.
       --apply`: columnas PERSONA/SALDA en Movimientos + datos de los préstamos viejos.
       Sin esto la página Préstamos muestra todo como "Sin asignar" y no deja guardar.
 
+- [ ] **Errores conocidos de la hoja `Stock`** (NO se corrigen en Sheets: decisión de
+      Franco 2026-10-10, el objetivo es dejar los Sheets; se resuelven en el ERP): no
+      descuenta las `Salida Equivalencia` de Embolsado/Premium (CF 705 × 10, CF 751 × 48,
+      CF 615 × 28 premium, CF 917 × 12, CF 042 × 4) ni la fila 76 de Movimientos (CF 917 × 10
+      sin tipo); `Entrega a David` suma al pool de David sin restar del depósito. Mientras
+      se sigan cargando cosas en los Sheets, el dashboard muestra esos códigos con stock de
+      más. Detalle en `moncar-erp/CLAUDE.md`.
 - [ ] Decidir cuál dashboard queda como definitivo (Drive vs Excel local) o si conviven.
+      (El ERP `moncar-erp/` apunta a reemplazar a los dos.)
 - [ ] Fijo mensual de Andi ($400.000) no implementado en el P&L.
 - [ ] **Análisis de descuentos** (pedido de Franco): la hoja `Ventas` ya tiene
       `DESCUENTO` ($) y `DESCUENTO_PCT` (%) cargados desde `remitos-app`. `SUBTOTAL` ya

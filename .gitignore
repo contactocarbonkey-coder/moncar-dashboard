@@ -34,3 +34,7 @@ pagina-web/sitio/
 # Web multi-zona (Next.js + Supabase) — repo git propio, no se versiona con este proyecto.
 # Contiene .env.local con claves de Supabase.
 moncar-web/
+
+# ERP zona Juli (Next.js + Supabase propio) — repo git propio, no se versiona con este proyecto.
+# Contiene .env.local con claves de Supabase.
+moncar-erp/
