@@ -71,7 +71,8 @@ claude MONCAR RMH/
 ├── dashboard_live.html              ← output Excel local (gitignored)
 ├── *_dev.html                       ← outputs de prueba (flag --dev), gitignored
 ├── ARCHIVOS BASE/*.xlsx             ← fuente Excel local (gitignored)
-├── BACKUPS/                         ← backups de datos (gitignored)
+├── (BACKUPS ya no está acá: desde 2026-10-16 vive en OneDrive/Documentos/KeyCarbon/BACKUPS, con copia en la nube;
+│    el ERP guarda ahí con RESPALDO_DIR en moncar-erp/.env.local)
 ├── LP/LP 10 CARBONES 01.04.2026.xlsx  ← lista de precios, NO integrada al dashboard (pendiente)
 ├── setup_stock_caba.gs              ← Apps Script hoja STOCK CABA de Andi — CONFIRMAR si sigue vivo
 ├── remitos-app/                     ← proyecto hermano, repo git propio (ver su CLAUDE.md)
