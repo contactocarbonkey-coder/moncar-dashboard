@@ -1,4 +1,4 @@
 @echo off
-cd /d "C:\Users\franc\OneDrive\Documentos\KeyCarbon\claude MONCAR RMH"
+cd /d "%~dp0"
 python .claude\servidor.py
 pause

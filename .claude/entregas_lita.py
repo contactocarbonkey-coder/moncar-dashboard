@@ -12,7 +12,7 @@
 import os, json, threading, urllib.request
 from datetime import datetime
 
-DIR      = r'C:\Users\franc\OneDrive\Documentos\KeyCarbon\claude MONCAR RMH'
+DIR      = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # raiz del proyecto (carpeta padre de .claude)
 ENV_PATH = os.path.join(DIR, 'remitos-app', '.env.local')
 STOCK_MC_SHEET_ID = '1u9xG2uyeT3V8osBi9Qz0xofDCPmFmhOXlu85c1OIEQ8'
 HOJA = 'Movimientos'

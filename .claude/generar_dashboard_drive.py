@@ -9,7 +9,7 @@ from datetime import datetime
 if sys.stdout.encoding != 'utf-8':
     sys.stdout.reconfigure(encoding='utf-8')
 
-DIR      = r'C:\Users\franc\OneDrive\Documentos\KeyCarbon\claude MONCAR RMH'
+DIR      = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # raiz del proyecto (carpeta padre de .claude)
 DEV_MODE = '--dev' in sys.argv
 OUT_PATH = DIR + (r'\dashboard_drive_dev.html' if DEV_MODE else r'\dashboard_drive.html')
 

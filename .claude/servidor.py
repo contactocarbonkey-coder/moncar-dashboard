@@ -3,7 +3,7 @@ import sys, os, json, importlib.util
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
 PORT        = 8050
-DIR         = r'C:\Users\franc\OneDrive\Documentos\KeyCarbon\claude MONCAR RMH'
+DIR         = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # raiz del proyecto (carpeta padre de .claude)
 HTML_PATH   = os.path.join(DIR, 'dashboard_live.html')
 SCRIPT_PATH = os.path.join(DIR, '.claude', 'generar_dashboard.py')
 

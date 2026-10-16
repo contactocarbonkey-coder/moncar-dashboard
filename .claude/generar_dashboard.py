@@ -12,7 +12,7 @@ except ImportError:
     print("ERROR: openpyxl no instalado. Ejecuta: pip install openpyxl")
     sys.exit(1)
 
-DIR         = r'C:\Users\franc\OneDrive\Documentos\KeyCarbon\claude MONCAR RMH'
+DIR         = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # raiz del proyecto (carpeta padre de .claude)
 BASE_DIR    = DIR + r'\ARCHIVOS BASE'
 VENTAS_PATH = BASE_DIR + r'\VENTAS.xlsx'
 MC_PATH     = BASE_DIR + r'\STOCK_MONCAR.xlsx'
