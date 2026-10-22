@@ -13,6 +13,7 @@ seguido, así que alcanza con leerlo del archivo local.
 import sys, os, json, csv, io, time
 import urllib.request, urllib.parse, urllib.error
 from collections import Counter
+from paginas_legales import generar_paginas_legales
 
 if sys.stdout.encoding != 'utf-8':
     sys.stdout.reconfigure(encoding='utf-8')
@@ -593,6 +594,8 @@ footer{{background:var(--black2);border-top:3px solid var(--orange);padding:36px
 .fc a{{display:block;font-size:13px;color:rgba(255,255,255,.85);text-decoration:none;margin-bottom:5px;cursor:pointer}}
 .fc a:hover{{color:var(--orange)}}
 .ft{{text-align:center;padding-top:18px;margin-top:20px;border-top:1px solid rgba(255,255,255,.1);font-size:12px;color:rgba(255,255,255,.4)}}
+.ft-cred{{margin-top:6px;font-size:11px}}
+.ft-cred a{{color:inherit}}
 
 /* MOBILE SIDEBAR TOGGLE */
 .sb-toggle{{font-family:var(--font-head);display:none;background:var(--orange);color:#fff;border:none;padding:8px 16px;border-radius:7px;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;cursor:pointer}}
@@ -647,6 +650,8 @@ footer{{background:var(--black2);border-top:3px solid var(--orange);padding:36px
 .fg input:focus{{outline:none;border-color:var(--orange)}}
 .fg input.ferr{{border-color:var(--red)}}
 .fg-note{{font-size:12px;color:var(--muted);margin-top:3px}}
+.f-aviso{{font-size:12px;color:var(--muted);line-height:1.5;margin-top:4px}}
+.f-aviso a{{color:var(--orange)}}
 .fmodal-acts{{display:flex;gap:10px;margin-top:22px}}
 .btn-cfm{{flex:1;background:var(--orange);color:#fff;border:none;border-radius:8px;padding:12px;font-size:15px;font-weight:700;cursor:pointer}}
 .btn-cfm:hover{{background:var(--orange2)}}
@@ -829,8 +834,9 @@ footer{{background:var(--black2);border-top:3px solid var(--orange);padding:36px
     </div>
     <div class="fc"><h4>Navegacion</h4><a onclick="irAInicio()">Inicio</a><a onclick="irAProductos()">Productos</a><a onclick="irANosotros()">Nosotros</a></div>
     <div class="fc"><h4>Contacto</h4><a href="https://wa.me/5491136267009" target="_blank">WhatsApp: +54 9 11 3626-7009</a><a href="mailto:contacto.carbonkey@gmail.com">contacto.carbonkey@gmail.com</a></div>
+    <div class="fc"><h4>Legal</h4><a href="privacidad.html">Politica de privacidad</a><a href="terminos.html">Terminos y condiciones</a></div>
   </div>
-  <div class="ft">© 2026 MONCAR RMH — Todos los derechos reservados</div>
+  <div class="ft">© 2026 MONCAR RMH — Todos los derechos reservados<div class="ft-cred">Icono de maquina de coser: Caro Asercion, <a href="https://game-icons.net" target="_blank" rel="noopener">game-icons.net</a> (<a href="https://creativecommons.org/licenses/by/3.0/" target="_blank" rel="noopener">CC BY 3.0</a>)</div></div>
 </footer>
 
 <!-- FORM PEDIDO -->
@@ -851,6 +857,7 @@ footer{{background:var(--black2);border-top:3px solid var(--orange);padding:36px
       <label>Localidad / Ciudad *</label>
       <input type="text" id="f-localidad" placeholder="Ej: Mendoza, Mar del Plata...">
     </div>
+    <div class="f-aviso">Usamos estos datos solo para responder tu consulta y derivarte con quien atiende tu zona. No los guardamos en este sitio: viajan en el mensaje que vos enviás. <a href="privacidad.html" target="_blank">Politica de privacidad</a></div>
     <div class="fmodal-acts">
       <button class="btn-cnc" onclick="cerrarFormModal()">Cancelar</button>
       <button class="btn-cfm" onclick="confirmarPedido()">Enviar pedido &#8594;</button>
@@ -1198,3 +1205,4 @@ if __name__ == '__main__':
         f.write(html)
 
     print(f"\nSitio generado: {OUT_PATH} ({len(html)//1024} KB)")
+    generar_paginas_legales(OUT_DIR)
