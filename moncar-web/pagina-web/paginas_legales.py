@@ -8,7 +8,7 @@ Meta), actualizar el texto acá y la fecha ACTUALIZADO.
 """
 import os
 
-ACTUALIZADO = '21 de octubre de 2026'
+ACTUALIZADO = '26 de octubre de 2026'
 EMAIL = 'contacto.carbonkey@gmail.com'
 WHATSAPP = '+54 9 11 3626-7009'
 
@@ -70,13 +70,19 @@ tu <strong>localidad</strong> y, si querés, el <strong>nombre de tu negocio</st
 Este sitio <strong>no guarda esos datos en ningún servidor</strong>: con ellos se arma
 un mensaje que se abre en tu WhatsApp o en tu correo, y nos llega solo si vos lo
 enviás. A partir de ahí, quedan en la conversación con nuestro equipo.</p>
-<p>No pedimos contraseñas, documentos ni datos de pago, y no tenemos cuentas de
-usuario en este sitio.</p>
+<p><strong>Cuenta de cliente (para ver precios).</strong> Si sos un comercio y te creás
+una cuenta, guardamos tu <strong>nombre</strong>, el <strong>nombre del local</strong>,
+tu <strong>localidad y provincia</strong>, tu <strong>WhatsApp</strong> y tu
+<strong>email</strong>, junto con la fecha en que aceptaste esta política. Tu contraseña
+la guarda el sistema de cuentas cifrada: nadie de nuestro equipo puede verla.</p>
+<p>No pedimos documentos ni datos de pago.</p>
 
 <h2>Para qué los usamos</h2>
 <ul>
 <li>Responder tu consulta o tu pedido.</li>
 <li>Derivarte con la persona del equipo que atiende tu zona.</li>
+<li>Si tenés cuenta: mostrarte los precios, identificarte en tus pedidos y asignarte
+a la zona que te corresponde.</li>
 </ul>
 <p>No vendemos ni cedemos tus datos a terceros, y no te vamos a mandar publicidad sin
 que nos lo pidas.</p>
@@ -85,7 +91,8 @@ que nos lo pidas.</p>
 <p>Los productos que agregás al carrito se guardan en tu propio navegador
 (almacenamiento local) para que no se pierdan si recargás la página. Esa información
 no nos llega; podés borrarla vaciando el carrito o los datos del sitio en tu
-navegador.</p>
+navegador. Si ingresás con tu cuenta, el navegador también guarda la sesión para que
+no tengas que volver a ingresar; se borra al cerrar sesión.</p>
 
 <h2>Cookies y seguimiento</h2>
 <p>Este sitio <strong>no usa cookies de publicidad ni de análisis</strong> (no usamos
@@ -97,6 +104,9 @@ pedir antes y vamos a actualizar esta política.</p>
 de tu conexión (como la dirección IP), según sus propias políticas:</p>
 <ul>
 <li><strong>Vercel</strong>: aloja el sitio.</li>
+<li><strong>Supabase</strong>: guarda las cuentas de clientes y la lista de precios
+(servidores en San Pablo, Brasil).</li>
+<li><strong>jsDelivr</strong>: sirve la librería que usa el sitio para las cuentas.</li>
 <li><strong>Google Fonts</strong> y <strong>Cloudflare (cdnjs)</strong>: sirven las
 tipografías y los íconos.</li>
 <li><strong>WhatsApp (Meta)</strong> o tu proveedor de correo: por donde nos mandás el
@@ -105,8 +115,9 @@ mensaje, si elegís hacerlo.</li>
 
 <h2>Tus derechos</h2>
 <p>Podés pedirnos en cualquier momento acceder a tus datos, corregirlos o que los
-borremos (por ejemplo, la conversación con tu pedido), escribiendo a
-<a href="mailto:{EMAIL}">{EMAIL}</a>. Respondemos dentro de los plazos de la ley.</p>
+borremos (por ejemplo, la conversación con tu pedido o tu cuenta de cliente), escribiendo
+a <a href="mailto:{EMAIL}">{EMAIL}</a> o por WhatsApp. Si nos pedís borrar tu cuenta, la
+eliminamos junto con todos sus datos. Respondemos dentro de los plazos de la ley.</p>
 <p>El titular de los datos personales tiene la facultad de ejercer el derecho de
 acceso a los mismos en forma gratuita a intervalos no inferiores a seis meses, salvo
 que se acredite un interés legítimo al efecto conforme lo establecido en el artículo
@@ -133,8 +144,9 @@ confirmado recién cuando alguien de nuestro equipo te responde y acuerdan las
 condiciones.</p>
 
 <h2>Precios</h2>
-<p>Los precios publicados son de lista, en pesos argentinos, y pueden cambiar sin
-previo aviso. El precio final, los impuestos que correspondan, los descuentos y la
+<p>Los precios se muestran a comercios con cuenta de cliente. Son de lista, en pesos
+argentinos, y pueden cambiar sin previo aviso. La cuenta es personal: no compartas tu
+contraseña. Podemos suspender una cuenta que no corresponda a un comercio del rubro. El precio final, los impuestos que correspondan, los descuentos y la
 forma de pago se informan al confirmar el pedido.</p>
 
 <h2>Disponibilidad y fotos</h2>
