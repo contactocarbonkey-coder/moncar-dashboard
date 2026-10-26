@@ -24,6 +24,10 @@ OUT_DIR  = os.path.join(DIR, 'sitio')
 OUT_PATH = os.path.join(OUT_DIR, 'index.html')
 IMG_DIR  = os.path.join(OUT_DIR, 'imagenes')
 LP_DIM_PATH = os.path.join(os.path.dirname(os.path.dirname(DIR)), 'LP', 'LP 10 CARBONES 01.04.2026.xlsx')
+# Claves de Supabase del panel (../backend-web/.env.local, gitignored). La web
+# B2B no lleva precios en el HTML: el generador los sube a `precios_web` y solo
+# los ven los clientes con cuenta (ver backend-web/supabase/migrations/0003).
+PANEL_ENV_PATH = os.path.join(os.path.dirname(DIR), 'backend-web', '.env.local')
 
 os.makedirs(OUT_DIR, exist_ok=True)
 os.makedirs(IMG_DIR, exist_ok=True)
@@ -754,6 +758,29 @@ footer{background:var(--black2);border-top:3px solid var(--orange)}
   .nav-logo{font-size:18px}
   .card-img{height:110px}
 }
+/* ---------- Cuentas de clientes (B2B) ---------- */
+.btn-cuenta{background:transparent;border-color:#444;color:#fff}
+.btn-cuenta:hover{border-color:var(--orange);color:var(--orange)}
+.card-lock{margin-top:auto;align-self:flex-start;display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:4px 0;border:0;background:none;font-size:14px;font-weight:700;color:var(--orange-txt);text-align:left}
+.card-lock:hover{text-decoration:underline}
+.b2b-aviso{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:14px 20px 0;padding:12px 16px;border:1px solid rgba(255,90,0,.3);border-radius:10px;background:#fff6f0;font-size:14px;line-height:1.45}
+.b2b-aviso>i{color:var(--orange);font-size:18px}
+.b2b-aviso p{flex:1;min-width:200px}
+.b2b-aviso .btn{min-height:38px;padding:0 14px;font-size:14px}
+.cm-tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:18px;padding:4px;border-radius:10px;background:var(--bg)}
+.cm-tabs button{min-height:40px;border:0;border-radius:8px;background:none;font-weight:700;color:var(--muted)}
+.cm-tabs button[aria-selected="true"]{background:var(--white);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.fg-2{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
+.chk{display:flex;gap:10px;align-items:flex-start;margin-top:4px;font-size:13px;color:var(--muted);line-height:1.45}
+.chk input{width:18px;height:18px;margin-top:1px;accent-color:var(--orange);flex-shrink:0}
+.chk a{color:var(--orange-txt)}
+.chk.err{color:var(--red)}
+.cm-err{margin-top:12px}
+.link-in{border:0;background:none;padding:0;font:inherit;font-weight:700;color:var(--orange-txt);text-decoration:underline}
+.cm-dl{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin:8px 0 16px;font-size:14px}
+.cm-dl dt{color:var(--muted)}
+.cm-dl dd{font-weight:600;word-break:break-word}
+@media(max-width:480px){.fg-2{grid-template-columns:1fr}}
 @media(prefers-reduced-motion:reduce){
   html{scroll-behavior:auto}
   *,*::before,*::after{transition:none!important}
@@ -779,6 +806,16 @@ const CONTACTOS = {
 function elegirDestino(localidad){
   return CONTACTOS.FRANCO;
 }
+
+// Cuentas de clientes (B2B): el catálogo es público pero los precios no van
+// en esta página; se leen de Supabase (tabla precios_web, protegida por RLS)
+// cuando hay sesión de un cliente activo. La librería viene del CDN: si no
+// carga, la web sigue andando como catálogo sin cuentas.
+const SB_URL = __SB_URL__, SB_KEY = __SB_KEY__;
+const PROVINCIAS = __PROVINCIAS__;
+const sb = window.supabase ? window.supabase.createClient(SB_URL, SB_KEY) : null;
+let hayPrecios = false;  // sesión con acceso a precios y precios cargados
+let cuenta = null;       // {email, ficha} de la sesión actual (ficha = fila de clientes)
 
 // "Marcas" de la hoja que en realidad son tipos de producto: no se muestran
 // como marca de la máquina en la tarjeta.
@@ -981,7 +1018,7 @@ function filtrar(){
     if(filtroLinea && p.linea !== filtroLinea) continue;
     if(selCats.length && !selCats.includes(p.cat)) continue;
     if(selMarcas.length && !selMarcas.includes(p.marca)) continue;
-    if(p.precio > 0 && (p.precio < pMin || p.precio > pMax)) continue;
+    if(hayPrecios && p.precio > 0 && (p.precio < pMin || p.precio > pMax)) continue;
     if(term && String(p.terminal) !== term) continue;
     if(tokens.length && !tokens.every(t => p._txt.includes(t))) continue;
     let dist = null;
@@ -1118,7 +1155,9 @@ function cardHTML(r){
       <div class="card-desc">${esc(p.desc)}</div>
       ${dims ? `<div class="card-dims"><i class="fa-solid fa-ruler" aria-hidden="true"></i>${dims}${p.terminal != null ? ' · Term. '+p.terminal : ''}</div>` : ''}
       ${tagMed}
-      <div class="card-precio">${fmt(p.precio)}</div>
+      ${hayPrecios
+        ? `<div class="card-precio">${fmt(p.precio)}</div>`
+        : `<button type="button" class="card-lock" onclick="abrirCuenta('registro')"><i class="fa-solid fa-lock" aria-hidden="true"></i> Ver precio</button>`}
       <div class="card-qty"><button type="button" aria-label="Restar uno" onclick="cambiarQtyCard(${cod},-1)">−</button><input type="number" inputmode="numeric" min="1" value="1" id="${qid(p.cod)}" aria-label="Cantidad de ${esc(p.cod)}"><button type="button" aria-label="Sumar uno" onclick="cambiarQtyCard(${cod},1)">+</button></div>
       <button type="button" class="btn-add" onclick="agregarAlCarrito(${cod})">Agregar</button>
       ${enCart ? `<div class="card-encart"><i class="fa-solid fa-check" aria-hidden="true"></i> ${enCart.qty} en el pedido</div>` : ''}
@@ -1147,7 +1186,7 @@ function actualizarContador(){
   const tot = cart.reduce((s, c) => s + precioActual(c) * c.qty, 0);
   document.querySelectorAll('.cart-n').forEach(el => el.textContent = n);
   $('pbar-n').textContent = n + (n === 1 ? ' unidad' : ' unidades');
-  $('pbar-total').textContent = fmt(tot);
+  $('pbar-total').textContent = hayPrecios ? fmt(tot) : 'Tu pedido';
   document.body.classList.toggle('con-pedido', cart.length > 0);
 }
 function agregarAlCarrito(cod){
@@ -1187,13 +1226,17 @@ function renderCart(){
         <div class="ci-cod">${esc(c.cod)}</div>
         ${tit ? `<div class="ci-t">${esc(tit)}</div>` : ''}
         <div class="ci-d">${esc(c.desc)}</div>
-        <div class="ci-p">${fmt(precioActual(c))} c/u</div>
+        ${hayPrecios ? `<div class="ci-p">${fmt(precioActual(c))} c/u</div>` : ''}
         <div class="ci-qty"><button type="button" aria-label="Restar uno" onclick="cambiarQty(${cod},-1)">−</button><span aria-label="Cantidad">${c.qty}</span><button type="button" aria-label="Sumar uno" onclick="cambiarQty(${cod},1)">+</button></div>
       </div>
       <button type="button" class="btn-rm" aria-label="Quitar ${esc(c.cod)}" onclick="quitarItem(${cod})"><i class="fa-solid fa-trash-can" aria-hidden="true"></i></button>
     </div>`;
   }).join('');
-  $('cart-total').textContent = fmt(cart.reduce((s, c) => s + precioActual(c) * c.qty, 0));
+  $('dr-total').hidden = !hayPrecios;
+  $('cart-total').textContent = hayPrecios ? fmt(cart.reduce((s, c) => s + precioActual(c) * c.qty, 0)) : '';
+  $('dr-note').innerHTML = hayPrecios
+    ? 'Precios de lista. Te confirmamos el pedido y el envío por WhatsApp o email.'
+    : 'Te mandamos la cotización por WhatsApp o email. ¿Querés ver los precios ahora? <button type="button" class="link-in" onclick="abrirCuenta(\'registro\')">Creá tu cuenta gratis</button>.';
 }
 function abrirCart(){
   ultimoFocus = document.activeElement;
@@ -1235,6 +1278,13 @@ function abrirFormModal(esPedido){
     : '<i class="fa-solid fa-envelope" aria-hidden="true"></i> Abrir email';
   $('fm-btn').className = 'btn ' + (_pedidoTipo === 'wa' ? 'btn-wa' : 'btn-primary');
   ['f-nombre','f-localidad'].forEach(id => { $(id).classList.remove('err'); $(id).removeAttribute('aria-invalid'); $(id+'-err').hidden = true; });
+  // Con cuenta, los datos ya los tenemos: se completan solos.
+  const fi = cuenta && cuenta.ficha;
+  if(fi){
+    if(!$('f-nombre').value) $('f-nombre').value = fi.nombre;
+    if(!$('f-negocio').value) $('f-negocio').value = fi.local;
+    if(!$('f-localidad').value) $('f-localidad').value = fi.localidad + ', ' + fi.provincia;
+  }
   $('fmodal').hidden = false;
   document.body.classList.add('lock');
   setTimeout(() => $('f-nombre').focus(), 50);
@@ -1264,6 +1314,7 @@ function confirmarPedido(ev){
   msg += 'Cliente: '+nombre+'\n';
   if(negocio) msg += 'Negocio: '+negocio+'\n';
   msg += 'Localidad: '+localidad+'\n';
+  if(cuenta) msg += 'Cuenta web: '+cuenta.email+'\n';
   if(conItems){
     msg += '\nProductos:\n';
     cart.forEach(c => { msg += `- ${c.cod} x${c.qty}\n`; });
@@ -1279,22 +1330,175 @@ function confirmarPedido(ev){
   }
 }
 
+// ---------- Cuentas de clientes ----------
+let uidActual, focusCuenta = null;
+function aplicarPrecios(mapa){
+  hayPrecios = !!mapa && Object.keys(mapa).length > 0;
+  PRODUCTOS.forEach(p => { p.precio = hayPrecios ? (mapa[p.cod] || 0) : undefined; });
+  $('sb-precio').hidden = !hayPrecios;
+  document.querySelectorAll('#orden option[value^="precio"]').forEach(o => { o.hidden = o.disabled = !hayPrecios; });
+  if(!hayPrecios){ $('orden').value = 'rec'; $('precio-min').value = ''; $('precio-max').value = ''; }
+  renderCuentaUI();
+  filtrar();
+  actualizarContador();
+  renderCart();
+}
+async function cargarCuenta(session){
+  if(!session){ cuenta = null; aplicarPrecios(null); return; }
+  const [f, pr] = await Promise.all([
+    sb.from('clientes').select('nombre,local,localidad,provincia,whatsapp,estado').eq('user_id', session.user.id).maybeSingle(),
+    sb.from('precios_web').select('codigo,precio').range(0, 4999),
+  ]);
+  cuenta = {email: session.user.email, ficha: f.data || null};
+  const mapa = {};
+  (pr.data || []).forEach(r => { mapa[r.codigo] = r.precio; });
+  aplicarPrecios(mapa);
+}
+if(sb) sb.auth.onAuthStateChange((ev, session) => {
+  const uid = session ? session.user.id : null;
+  if(uid === uidActual) return;  // renovación del token: nada que recargar
+  uidActual = uid;
+  // fuera del callback: supabase-js no admite otras llamadas adentro
+  setTimeout(() => cargarCuenta(session), 0);
+});
+function renderCuentaUI(){
+  $('btn-cuenta-tx').textContent = cuenta ? 'Mi cuenta' : 'Ingresar';
+  const av = $('b2b-aviso');
+  const bloqueada = cuenta && cuenta.ficha && cuenta.ficha.estado !== 'activo';
+  av.hidden = hayPrecios;
+  if(hayPrecios) return;
+  av.innerHTML = bloqueada
+    ? '<i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i><p>Tu cuenta está suspendida y no muestra precios. Escribinos por WhatsApp y lo vemos.</p>'
+    : cuenta
+    ? '<i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i><p>Tu usuario no tiene acceso a la lista de precios. Escribinos por WhatsApp.</p>'
+    : '<i class="fa-solid fa-lock" aria-hidden="true"></i><p><strong>Precios exclusivos para comercios.</strong> Creá tu cuenta gratis en un minuto y vas a ver los precios al instante.</p>'
+      + '<button type="button" class="btn btn-primary" onclick="abrirCuenta(\'registro\')">Crear cuenta</button>'
+      + '<button type="button" class="btn btn-line" onclick="abrirCuenta(\'login\')">Ya tengo cuenta</button>';
+}
+function abrirCuenta(vista){
+  focusCuenta = document.activeElement;
+  cerrarCart();
+  $('cm-acceso').hidden = !!cuenta;
+  $('cm-cuenta').hidden = !cuenta;
+  if(cuenta){
+    const fi = cuenta.ficha;
+    const filas = [['Email', cuenta.email]];
+    if(fi) filas.push(['Nombre', fi.nombre], ['Local', fi.local], ['Localidad', fi.localidad + ', ' + fi.provincia], ['WhatsApp', fi.whatsapp],
+                      ['Estado', fi.estado === 'activo' ? 'Activa' : 'Suspendida']);
+    $('cm-datos').innerHTML = filas.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('');
+  } else {
+    vistaCuenta(vista || 'registro');
+  }
+  $('cmodal').hidden = false;
+  document.body.classList.add('lock');
+  setTimeout(() => { const el = cuenta ? $('cm-salir') : $(vista === 'login' ? 'l-email' : 'r-nombre'); if(el) el.focus(); }, 50);
+}
+function cerrarCuenta(){
+  if($('cmodal').hidden) return;
+  $('cmodal').hidden = true;
+  document.body.classList.remove('lock');
+  if(focusCuenta) focusCuenta.focus();
+}
+function vistaCuenta(v){
+  const reg = v !== 'login';
+  $('form-registro').hidden = !reg;
+  $('form-login').hidden = reg;
+  $('tab-registro').setAttribute('aria-selected', reg);
+  $('tab-login').setAttribute('aria-selected', !reg);
+  ['r-err','l-err'].forEach(id => $(id).hidden = true);
+}
+function msgAuth(e){
+  const m = String((e && e.message) || '').toLowerCase();
+  if(m.includes('already')) return 'Ya existe una cuenta con ese email. Entrá desde "Ya tengo cuenta".';
+  if(m.includes('invalid login')) return 'El email o la contraseña no coinciden.';
+  if(m.includes('signup') && (m.includes('not allowed') || m.includes('disabled'))) return 'El registro no está habilitado en este momento. Escribinos por WhatsApp.';
+  if((e && e.status === 429) || m.includes('rate limit')) return 'Demasiados intentos. Esperá unos minutos y probá de nuevo.';
+  if(m.includes('password')) return 'La contraseña no es válida: usá al menos 8 caracteres.';
+  if(m.includes('database error')) return 'No pudimos guardar tus datos. Revisalos y probá de nuevo.';
+  return 'No pudimos completar la operación. Probá de nuevo en un rato.';
+}
+function errCuenta(id, txt){ $(id).textContent = txt; $(id).hidden = false; }
+function ocupado(form, si){ const b = form.querySelector('[type=submit]'); b.disabled = si; b.dataset.txt = b.dataset.txt || b.textContent; b.textContent = si ? 'Un momento…' : b.dataset.txt; }
+async function registrar(ev){
+  ev.preventDefault();
+  const form = ev.target;
+  if(!sb) return errCuenta('r-err', 'No se pudo conectar. Recargá la página y probá de nuevo.');
+  const v = id => $(id).value.trim();
+  const d = {nombre: v('r-nombre'), local: v('r-local'), localidad: v('r-localidad'), provincia: v('r-provincia'),
+             whatsapp: v('r-wa').replace(/\D/g, ''), email: v('r-email'), pass: $('r-pass').value};
+  const reglas = [
+    ['r-nombre', d.nombre, 'Escribí tu nombre.'],
+    ['r-local', d.local, 'Escribí el nombre del local.'],
+    ['r-localidad', d.localidad, 'Escribí tu localidad.'],
+    ['r-provincia', d.provincia, 'Elegí tu provincia.'],
+    ['r-wa', d.whatsapp.length >= 8 && d.whatsapp.length <= 15, 'Escribí un WhatsApp válido, con código de área.'],
+    ['r-email', /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email), 'Escribí un email válido.'],
+    ['r-pass', d.pass.length >= 8, 'La contraseña tiene que tener al menos 8 caracteres.'],
+    ['r-acepto', $('r-acepto').checked, 'Para crear la cuenta tenés que aceptar la política de privacidad.'],
+  ];
+  let primero = null;
+  reglas.forEach(([id, ok, txt]) => {
+    const el = id === 'r-acepto' ? $('r-acepto').closest('.chk') : $(id);
+    el.classList.toggle('err', !ok);
+    if(id !== 'r-acepto'){ if(ok) $(id).removeAttribute('aria-invalid'); else $(id).setAttribute('aria-invalid', 'true'); }
+    if(!ok && !primero) primero = [id, txt];
+  });
+  if(primero){ errCuenta('r-err', primero[1]); $(primero[0]).focus(); return; }
+  $('r-err').hidden = true;
+  ocupado(form, true);
+  const {data, error} = await sb.auth.signUp({email: d.email, password: d.pass, options: {data: {
+    tipo: 'cliente', nombre: d.nombre, local: d.local, localidad: d.localidad, provincia: d.provincia,
+    whatsapp: d.whatsapp, acepto_privacidad: 'true'}}});
+  ocupado(form, false);
+  if(error) return errCuenta('r-err', msgAuth(error));
+  if(!data.session) return errCuenta('r-err', 'Te mandamos un email para confirmar la cuenta. Abrilo y después ingresá.');
+  form.reset();
+  cerrarCuenta();
+  mostrarToast('¡Listo! Tu cuenta está creada y ya ves los precios.');
+}
+async function ingresar(ev){
+  ev.preventDefault();
+  const form = ev.target;
+  if(!sb) return errCuenta('l-err', 'No se pudo conectar. Recargá la página y probá de nuevo.');
+  const email = $('l-email').value.trim(), pass = $('l-pass').value;
+  if(!email || !pass) return errCuenta('l-err', 'Escribí tu email y tu contraseña.');
+  ocupado(form, true);
+  const {error} = await sb.auth.signInWithPassword({email, password: pass});
+  ocupado(form, false);
+  if(error) return errCuenta('l-err', msgAuth(error));
+  form.reset();
+  cerrarCuenta();
+  mostrarToast('Ingresaste. Ya ves los precios.');
+}
+async function salir(){
+  if(sb) await sb.auth.signOut();
+  cerrarCuenta();
+  mostrarToast('Cerraste sesión.');
+}
+
 document.addEventListener('keydown', e => {
   if(e.key !== 'Escape') return;
-  if(!$('fmodal').hidden) cerrarFormModal();
+  if(!$('cmodal').hidden) cerrarCuenta();
+  else if(!$('fmodal').hidden) cerrarFormModal();
   else if($('cart').classList.contains('open')) cerrarCart();
   else if(document.querySelector('.dd.open')) cerrarMenus();
   else cerrarFiltros();
 });
 
-actualizarContador();
-renderCart();
+$('r-provincia').innerHTML = '<option value="">Elegí…</option>' + PROVINCIAS.map(p => `<option>${esc(p)}</option>`).join('');
+aplicarPrecios(null);  // arranca sin precios; si hay sesión, onAuthStateChange los carga
 actualizarConteos();
 if(location.hash) aplicarHash(); else { mostrarPagina('inicio'); filtrar(); }
 '''
 
 
-def generar_html(productos):
+# Misma lista que valida la base (interno.crear_cliente_desde_auth).
+PROVINCIAS = ['Buenos Aires', 'CABA', 'Catamarca', 'Chaco', 'Chubut', 'Córdoba', 'Corrientes',
+              'Entre Ríos', 'Formosa', 'Jujuy', 'La Pampa', 'La Rioja', 'Mendoza', 'Misiones',
+              'Neuquén', 'Río Negro', 'Salta', 'San Juan', 'San Luis', 'Santa Cruz', 'Santa Fe',
+              'Santiago del Estero', 'Tierra del Fuego', 'Tucumán']
+
+def generar_html(productos, env):
     cat_count = Counter(p['cat'] for p in productos)
     cats_orden = [c for c, _ in sorted(cat_count.items(), key=lambda x: -x[1])]
     # En la portada, "por tipo de máquina" es de carbones: cuenta solo MONCAR
@@ -1375,9 +1579,14 @@ def generar_html(productos):
     def opt(vals):
         return '\n'.join(f'<option value="{v}">{v}</option>' for v in vals)
 
+    # Sin precios: la web es B2B, los precios llegan de Supabase con la sesión.
     # '</' escapado para que ningún texto de producto pueda cerrar el <script>
-    productos_json = json.dumps(productos, ensure_ascii=False).replace('</', '<\\/')
+    publicos = [{k: v for k, v in p.items() if k != 'precio'} for p in productos]
+    productos_json = json.dumps(publicos, ensure_ascii=False).replace('</', '<\\/')
     js = (_JS.replace('__PRODUCTOS__', productos_json)
+             .replace('__SB_URL__', json.dumps(env['NEXT_PUBLIC_SUPABASE_URL']))
+             .replace('__SB_KEY__', json.dumps(env['NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY']))
+             .replace('__PROVINCIAS__', json.dumps(PROVINCIAS, ensure_ascii=False))
              .replace('__CAT_LABEL__', json.dumps(CAT_LABEL, ensure_ascii=False))
              .replace('__MARCA_LABEL__', json.dumps(MARCA_LABEL, ensure_ascii=False)))
 
@@ -1421,6 +1630,7 @@ def generar_html(productos):
       <button type="button" class="nav-link" data-nav="nosotros" onclick="irANosotros()">Nosotros</button>
     </nav>
     <div class="nav-right">
+      <button type="button" class="btn btn-cuenta" onclick="abrirCuenta('login')"><i class="fa-solid fa-user" aria-hidden="true"></i><span class="hide-sm" id="btn-cuenta-tx">Ingresar</span></button>
       <button type="button" class="btn btn-wa-nav" onclick="abrirConsultaWA()" aria-label="Consultar por WhatsApp">{wa_ico}<span class="hide-sm">WhatsApp</span></button>
       <button type="button" class="btn btn-primary" onclick="abrirCart()" aria-label="Ver mi pedido"><i class="fa-solid fa-cart-shopping" aria-hidden="true"></i><span class="hide-sm">Pedido</span><span class="cart-n">0</span></button>
     </div>
@@ -1548,7 +1758,7 @@ def generar_html(productos):
           <h2 class="sb-title"><i class="fa-solid fa-tag" aria-hidden="true"></i> Marca de la máquina</h2>
           {filtro_marcas()}
         </div>
-        <div class="sb-section">
+        <div class="sb-section" id="sb-precio" hidden>
           <h2 class="sb-title"><i class="fa-solid fa-dollar-sign" aria-hidden="true"></i> Precio</h2>
           <div class="sb-range">
             <input id="precio-min" class="inp" inputmode="numeric" placeholder="Mín" aria-label="Precio mínimo" oninput="filtrarPronto()">
@@ -1579,6 +1789,7 @@ def generar_html(productos):
         <button type="button" class="lt" data-val="MONCAR" aria-pressed="false" onclick="setLinea(this)"><span class="lt-ico"><i class="fa-solid fa-bolt" aria-hidden="true"></i></span><span><strong>Carbones</strong><span>Línea MONCAR</span></span></button>
         <button type="button" class="lt" data-val="RMH" aria-pressed="false" onclick="setLinea(this)"><span class="lt-ico"><i class="fa-solid fa-toggle-on" aria-hidden="true"></i></span><span><strong>Interruptores</strong><span>Línea RMH</span></span></button>
       </div>
+      <div class="b2b-aviso" id="b2b-aviso" hidden></div>
       <div class="toolbar">
         <p class="res-n" id="results-info" aria-live="polite"></p>
         <label class="orden"><span>Ordenar:</span>
@@ -1646,8 +1857,8 @@ def generar_html(productos):
   <div class="dr-head"><h2>Tu pedido</h2><button type="button" class="x" id="cart-close" onclick="cerrarCart()" aria-label="Cerrar pedido"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button></div>
   <div class="dr-items" id="cart-items"></div>
   <div class="dr-foot" id="dr-foot" hidden>
-    <div class="dr-total"><span>Total estimado</span><strong id="cart-total">$0</strong></div>
-    <p class="dr-note">Precios de lista. Te confirmamos el pedido y el envío por WhatsApp o email.</p>
+    <div class="dr-total" id="dr-total"><span>Total estimado</span><strong id="cart-total">$0</strong></div>
+    <p class="dr-note" id="dr-note"></p>
     <button type="button" class="btn btn-wa btn-lg" onclick="pedirPorWA()">{wa_ico} Pedir por WhatsApp</button>
     <button type="button" class="btn btn-line" onclick="pedirPorEmail()"><i class="fa-solid fa-envelope" aria-hidden="true"></i> Pedir por email</button>
     <button type="button" class="dr-vaciar" onclick="vaciarCart()">Vaciar pedido</button>
@@ -1681,18 +1892,122 @@ def generar_html(productos):
   </form>
 </div>
 
+<!-- CUENTA DE CLIENTE (registro / ingreso / mi cuenta) -->
+<div class="modal" id="cmodal" role="dialog" aria-modal="true" aria-labelledby="cm-title" hidden onclick="if(event.target===this)cerrarCuenta()">
+  <div class="modal-box">
+    <div id="cm-acceso">
+      <h2 id="cm-title">Precios para comercios</h2>
+      <p class="modal-sub">Creá tu cuenta gratis y ves los precios al instante. Es para ferreterías, talleres, casas de repuestos y comercios del rubro.</p>
+      <div class="cm-tabs" role="tablist">
+        <button type="button" role="tab" id="tab-registro" aria-selected="true" onclick="vistaCuenta('registro')">Crear cuenta</button>
+        <button type="button" role="tab" id="tab-login" aria-selected="false" onclick="vistaCuenta('login')">Ya tengo cuenta</button>
+      </div>
+      <form id="form-registro" onsubmit="registrar(event)" novalidate>
+        <div class="fg"><label for="r-nombre">Tu nombre</label><input type="text" id="r-nombre" class="inp" autocomplete="name" maxlength="120"></div>
+        <div class="fg"><label for="r-local">Nombre del local</label><input type="text" id="r-local" class="inp" autocomplete="organization" maxlength="120" placeholder="Ferretería, taller, casa de repuestos…"></div>
+        <div class="fg-2">
+          <div class="fg"><label for="r-localidad">Localidad</label><input type="text" id="r-localidad" class="inp" autocomplete="address-level2" maxlength="120"></div>
+          <div class="fg"><label for="r-provincia">Provincia</label><select id="r-provincia" class="inp" autocomplete="address-level1"></select></div>
+        </div>
+        <div class="fg"><label for="r-wa">WhatsApp</label><input type="tel" id="r-wa" class="inp" autocomplete="tel" inputmode="tel" placeholder="Ej: 11 3626-7009"></div>
+        <div class="fg"><label for="r-email">Email</label><input type="email" id="r-email" class="inp" autocomplete="email"></div>
+        <div class="fg"><label for="r-pass">Contraseña <span class="opt">(mínimo 8 caracteres)</span></label><input type="password" id="r-pass" class="inp" autocomplete="new-password"></div>
+        <label class="chk"><input type="checkbox" id="r-acepto"><span>Acepto la <a href="privacidad.html" target="_blank">política de privacidad</a>: MONCAR RMH guarda estos datos para darte acceso a los precios y atender tus pedidos.</span></label>
+        <p class="fg-err cm-err" id="r-err" role="alert" hidden></p>
+        <div class="modal-acts">
+          <button type="button" class="btn btn-line" onclick="cerrarCuenta()">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Crear cuenta</button>
+        </div>
+      </form>
+      <form id="form-login" onsubmit="ingresar(event)" novalidate hidden>
+        <div class="fg"><label for="l-email">Email</label><input type="email" id="l-email" class="inp" autocomplete="email"></div>
+        <div class="fg"><label for="l-pass">Contraseña</label><input type="password" id="l-pass" class="inp" autocomplete="current-password"></div>
+        <p class="aviso">¿Te olvidaste la contraseña? Escribinos por WhatsApp y te ayudamos.</p>
+        <p class="fg-err cm-err" id="l-err" role="alert" hidden></p>
+        <div class="modal-acts">
+          <button type="button" class="btn btn-line" onclick="cerrarCuenta()">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Ingresar</button>
+        </div>
+      </form>
+    </div>
+    <div id="cm-cuenta" hidden>
+      <h2>Mi cuenta</h2>
+      <dl class="cm-dl" id="cm-datos"></dl>
+      <p class="aviso">Para cambiar tus datos o borrar tu cuenta escribinos a <a href="mailto:contacto.carbonkey@gmail.com?subject=Mi%20cuenta%20web">contacto.carbonkey@gmail.com</a>.</p>
+      <div class="modal-acts">
+        <button type="button" class="btn btn-line" onclick="cerrarCuenta()">Cerrar</button>
+        <button type="button" class="btn btn-primary" id="cm-salir" onclick="salir()">Cerrar sesión</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Aviso "agregado" + barra de pedido en el celular -->
 <div class="toast" id="toast" role="status" aria-live="polite"><i class="fa-solid fa-circle-check" aria-hidden="true"></i><span id="toast-msg"></span><button type="button" onclick="abrirCart()">Ver pedido</button></div>
 <div class="pbar"><div class="pbar-tx"><strong id="pbar-total">$0</strong><span id="pbar-n">0 unidades</span></div><button type="button" class="btn btn-primary" onclick="abrirCart()"><i class="fa-solid fa-cart-shopping" aria-hidden="true"></i> Ver pedido</button></div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script>{js}</script>
 </body>
 </html>'''
 
 # ---------------------------------------------------------------------------
+# Precios para clientes con cuenta (Supabase del panel)
+# ---------------------------------------------------------------------------
+def leer_env_panel():
+    """KEY=VALUE de backend-web/.env.local. Nunca imprimir los valores."""
+    env = {}
+    try:
+        with open(PANEL_ENV_PATH, encoding='utf-8') as f:
+            for linea in f:
+                linea = linea.strip()
+                if not linea or linea.startswith('#') or '=' not in linea:
+                    continue
+                k, v = linea.split('=', 1)
+                env[k.strip()] = v.strip().strip('"').strip("'")
+    except FileNotFoundError:
+        pass
+    faltan = [k for k in ('NEXT_PUBLIC_SUPABASE_URL', 'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY', 'SUPABASE_SECRET_KEY')
+              if not env.get(k)]
+    if faltan:
+        sys.exit(f"ERROR: faltan {', '.join(faltan)} en {PANEL_ENV_PATH}")
+    return env
+
+def _rest(env, metodo, ruta, cuerpo=None, prefer=''):
+    req = urllib.request.Request(
+        env['NEXT_PUBLIC_SUPABASE_URL'].rstrip('/') + '/rest/v1/' + ruta,
+        data=json.dumps(cuerpo).encode('utf-8') if cuerpo is not None else None,
+        method=metodo,
+        headers={'apikey': env['SUPABASE_SECRET_KEY'], 'Content-Type': 'application/json',
+                 'Prefer': prefer or 'return=minimal'})
+    with urllib.request.urlopen(req, timeout=60) as r:
+        return r.status
+
+def subir_precios(productos, env):
+    """Reemplaza el contenido de precios_web por los precios de esta corrida:
+    upsert de todos y después borra los códigos que ya no están en la lista."""
+    inicio = time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime(time.time() - 5))
+    ahora = time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())
+    filas = [{'codigo': p['cod'], 'precio': p['precio'], 'updated_at': ahora} for p in productos]
+    print(f"Subiendo {len(filas)} precios a Supabase (precios_web)...")
+    try:
+        _rest(env, 'POST', 'precios_web?on_conflict=codigo', filas,
+              'resolution=merge-duplicates,return=minimal')
+        _rest(env, 'DELETE', 'precios_web?updated_at=lt.' + urllib.parse.quote(inicio))
+    except urllib.error.HTTPError as e:
+        sys.exit(f"ERROR subiendo precios ({e.code}): {e.read().decode('utf-8', 'replace')[:300]}\n"
+                 "No se generó el sitio para no publicarlo sin precios.")
+    except urllib.error.URLError as e:
+        sys.exit(f"ERROR de red subiendo precios: {e}\nNo se generó el sitio.")
+    print("  -> precios subidos")
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 if __name__ == '__main__':
+    # --sin-subir-precios: genera el HTML sin tocar Supabase (pruebas locales).
+    sin_subir = '--sin-subir-precios' in sys.argv
+    env_panel = leer_env_panel()
     productos_mc  = leer_moncar()
     productos_rmh = leer_rmh()
     todos = productos_mc + productos_rmh
@@ -1708,8 +2023,14 @@ if __name__ == '__main__':
     for m,c in sorted(destacadas, key=lambda x: -x[1]):
         print(f"  {m}: {c}")
 
+    if sin_subir:
+        print("\nAVISO: --sin-subir-precios, precios_web no se actualizó.")
+    else:
+        print()
+        subir_precios(todos, env_panel)
+
     print("\nGenerando HTML...")
-    html = generar_html(todos)
+    html = generar_html(todos, env_panel)
     with open(OUT_PATH, 'w', encoding='utf-8') as f:
         f.write(html)
 
