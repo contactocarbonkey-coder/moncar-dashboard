@@ -318,11 +318,13 @@ def leer_rmh():
     return productos
 
 # ---------------------------------------------------------------------------
-# Generador HTML — rediseño 2026-10-26 (rama rediseno-web).
-# Estilo: catálogo industrial sobrio (fondo claro, líneas finas, sin sombras
-# ni degradés, bandas oscuras #0f0e12) con el naranja de la marca solo en la
-# acción principal. Pensado para ferreteros: letra 16px, botones de 44px+,
-# búsqueda guiada por marca / tipo de máquina / medidas (no por código).
+# Generador HTML — v3 (2026-10-26, rama rediseno-web): diseño de la v1 (la web
+# en vivo: Oswald, negro/naranja, tarjetas redondeadas, logo) con la
+# usabilidad de la v2: buscador guiado en la portada (marca / máquina /
+# medidas), búsqueda por medidas con tolerancia, fotos sobre fondo blanco,
+# líneas MONCAR (carbones) y RMH (interruptores) bien separadas, menú
+# "Productos" con acceso directo a cada línea, aviso al agregar y barra de
+# pedido en el celular.
 #
 # CSS y JS van en strings crudos aparte (no f-strings) para no tener que
 # duplicar llaves; los datos entran por reemplazo de marcadores __X__.
@@ -344,8 +346,8 @@ MARCA_LABEL = {
 _SVG_MEDIDAS = '''<svg viewBox="0 0 250 232" role="img" aria-label="Cómo medir un carbón: espesor, ancho y largo">
 <path d="M88 60 C88 40 88 34 88 22" stroke="#8a908d" stroke-width="3" fill="none"/>
 <rect x="80" y="10" width="16" height="12" fill="#fff" stroke="#111" stroke-width="1.5"/>
-<rect x="48" y="60" width="80" height="120" fill="#3b3a40" stroke="#111" stroke-width="1.5"/>
-<rect x="176" y="60" width="34" height="120" fill="#5a5960" stroke="#111" stroke-width="1.5"/>
+<rect x="48" y="60" width="80" height="120" rx="3" fill="#3b3a40" stroke="#111" stroke-width="1.5"/>
+<rect x="176" y="60" width="34" height="120" rx="3" fill="#5a5960" stroke="#111" stroke-width="1.5"/>
 <g stroke="#ff5a00" stroke-width="1.5">
 <line x1="48" y1="198" x2="128" y2="198"/><line x1="48" y1="192" x2="48" y2="204"/><line x1="128" y1="192" x2="128" y2="204"/>
 <line x1="176" y1="198" x2="210" y2="198"/><line x1="176" y1="192" x2="176" y2="204"/><line x1="210" y1="192" x2="210" y2="204"/>
@@ -360,346 +362,409 @@ _SVG_MEDIDAS = '''<svg viewBox="0 0 250 232" role="img" aria-label="Cómo medir 
 _CSS = r'''
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#f6f8f7;--surface:#fff;--line:#e3e6e4;--line-2:#cdd2cf;
-  --ink:#111214;--ink-2:#33373a;--muted:#5c6360;
-  --carbon:#0f0e12;--carbon-2:#1b1a20;--carbon-line:#2e2d35;
-  --orange:#ff5a00;--orange-2:#e04f00;--orange-txt:#c2410c;
-  --wa:#1d9e52;--wa-2:#178a47;--ok:#15803d;--err:#c81e1e;
-  --r:4px;--head-h:64px;--head-total:64px;--wrap:1240px;
-  --font:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  --bg:#f0f0f0;--white:#fff;--border:#e0e0e0;
+  --black:#111111;--black2:#000000;
+  --orange:#FF5A00;--orange2:#e04e00;--orange-txt:#c2410c;
+  --text:#111;--muted:#666;
+  --wa:#25D366;--wa2:#1ebe5b;--green:#16a34a;--red:#dc2626;
+  --nav-h:72px;--head-total:72px;--sb-w:270px;
+  --font-head:'Oswald',sans-serif;--font-body:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
   color-scheme:light;
 }
 html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
-body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:16px;line-height:1.5}
+body{background:var(--bg);color:var(--text);font-family:var(--font-body);font-size:16px;line-height:1.5}
 body.lock{overflow:hidden}
 button,input,select{font:inherit;color:inherit}
 button{cursor:pointer}
 [hidden]{display:none!important}
 :focus-visible{outline:2px solid var(--orange);outline-offset:2px}
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
-.wrap{max-width:var(--wrap);margin:0 auto;padding-left:20px;padding-right:20px}
+.wrap{max-width:1240px;margin:0 auto;padding-left:28px;padding-right:28px}
 section[id^="sec-"]{scroll-margin-top:calc(var(--head-total) + 8px)}
 
 /* Botones */
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 18px;border-radius:var(--r);border:1px solid transparent;background:none;font-size:15px;font-weight:600;text-decoration:none;white-space:nowrap;transition:background-color .15s,border-color .15s,color .15s}
-.btn-lg{min-height:52px;padding:0 24px;font-size:16px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 20px;border:1px solid transparent;border-radius:8px;background:none;font-family:var(--font-head);font-size:15px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;text-decoration:none;white-space:nowrap;transition:background-color .15s,border-color .15s,color .15s}
+.btn-lg{min-height:52px;padding:0 30px;font-size:16px}
 .btn-block{width:100%}
 .btn-primary{background:var(--orange);color:#fff}
-.btn-primary:hover{background:var(--orange-2)}
-.btn-line{background:var(--surface);border-color:var(--line-2);color:var(--ink)}
-.btn-line:hover{border-color:var(--ink)}
+.btn-primary:hover{background:var(--orange2)}
+.btn-line{background:var(--white);border-color:var(--border);color:var(--text)}
+.btn-line:hover{border-color:var(--orange);color:var(--orange-txt)}
 .btn-wa{background:var(--wa);color:#fff}
-.btn-wa:hover{background:var(--wa-2)}
-.btn-ghost-dark{border-color:rgba(255,255,255,.4);color:#fff}
-.btn-ghost-dark:hover{border-color:#fff}
-.wa-ico{color:var(--wa);font-size:18px}
+.btn-wa:hover{background:var(--wa2)}
+.btn-ghost-dark{border-color:rgba(255,255,255,.3);color:#fff}
+.btn-ghost-dark:hover{border-color:rgba(255,255,255,.7)}
 
 /* Campos */
-.inp{width:100%;min-height:48px;border:1px solid var(--line-2);border-radius:var(--r);background:#fff;padding:0 12px;font-size:16px;color:var(--ink)}
-.inp:focus{outline:none;border-color:var(--orange);box-shadow:inset 0 0 0 1px var(--orange)}
-.inp::placeholder{color:#8b918e}
-.inp.err{border-color:var(--err)}
-select.inp{padding-right:8px}
+.inp{width:100%;min-height:46px;border:1px solid var(--border);border-radius:8px;background:var(--white);padding:0 12px;font-size:16px;color:var(--text)}
+.inp:focus{outline:none;border-color:var(--orange);box-shadow:0 0 0 3px rgba(255,90,0,.15)}
+.inp::placeholder{color:#999}
+.inp.err{border-color:var(--red)}
 .inp-unit{position:relative}
-.inp-unit .inp{padding-right:40px}
+.inp-unit .inp{padding-right:42px}
 .inp-unit::after{content:'mm';position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:14px;pointer-events:none}
-.fg-err{color:var(--err);font-size:14px;margin-top:6px}
+.fg-err{color:var(--red);font-size:14px;margin-top:6px}
 
-/* ===== Encabezado ===== */
-.top{position:sticky;top:0;z-index:100;background:var(--surface);border-bottom:1px solid var(--line)}
-.top-in{height:var(--head-h);display:flex;align-items:center;gap:28px}
-.logo{background:none;border:0;padding:0;font-size:22px;font-weight:800;letter-spacing:.02em;color:var(--ink)}
-.logo span{color:var(--orange)}
-.nav{display:flex;height:100%}
-.nav-btn{background:none;border:0;border-bottom:2px solid transparent;padding:0 14px;height:100%;font-size:15px;font-weight:500;color:var(--muted)}
-.nav-btn:hover{color:var(--ink)}
-.nav-btn.active{color:var(--ink);font-weight:600;border-bottom-color:var(--orange)}
-.top-acts{margin-left:auto;display:flex;gap:8px}
-.cart-n{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 6px;border-radius:11px;background:#fff;color:var(--orange-txt);font-size:13px;font-weight:700}
+/* ===== NAV ===== */
+.top{position:sticky;top:0;z-index:100;background:var(--black2);box-shadow:0 1px 4px rgba(0,0,0,.3)}
+.top-in{height:var(--nav-h);display:flex;align-items:center;gap:8px}
+.nav-logo{background:none;border:0;padding:0;margin-right:28px;font-family:var(--font-head);font-size:28px;font-weight:700;letter-spacing:.5px;color:#fff;text-transform:uppercase}
+.nav-logo span{color:var(--orange)}
+.nav{display:flex;align-items:center;height:100%;gap:2px}
+.nav-link{display:flex;align-items:center;gap:6px;height:44px;padding:0 16px;border:0;border-radius:6px;background:none;font-family:var(--font-head);font-size:17px;font-weight:600;letter-spacing:.3px;text-transform:uppercase;color:rgba(255,255,255,.75);transition:.15s}
+.nav-link:hover{color:#fff;background:rgba(255,255,255,.08)}
+.nav-link.active{color:var(--orange);font-weight:700}
+.nav-link .fa-chevron-down{font-size:11px}
+.nav-right{display:flex;gap:10px;align-items:center;margin-left:auto}
+.btn-wa-nav{background:var(--wa);color:#fff}
+.btn-wa-nav:hover{background:var(--wa2)}
+.cart-n{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 5px;border-radius:10px;background:#fff;color:var(--orange-txt);font-family:var(--font-body);font-size:12px;font-weight:800}
 .tabs{display:none}
 
-/* ===== Inicio ===== */
-.hero{background:var(--carbon);color:#fff}
-.hero-in{display:grid;grid-template-columns:1.1fr 1fr;gap:56px;align-items:center;padding-top:64px;padding-bottom:64px}
-.hero-kicker{font-size:13px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#a9abb1;margin-bottom:16px}
-.hero h1{font-size:clamp(32px,4.4vw,52px);font-weight:700;line-height:1.08;letter-spacing:-.015em;margin-bottom:18px}
-.hero h1 em{font-style:normal;color:var(--orange)}
-.hero-p{font-size:18px;color:#c9cbcf;max-width:540px;margin-bottom:30px}
-.hero-btns{display:flex;gap:12px;flex-wrap:wrap}
+/* Menú desplegable "Productos" */
+.dd{position:relative;display:flex;align-items:center;height:100%}
+.dd-menu{position:absolute;top:100%;left:0;z-index:120;min-width:320px;padding:8px;background:var(--white);border-radius:0 0 10px 10px;box-shadow:0 12px 32px rgba(0,0,0,.22);display:none}
+@media(hover:hover) and (pointer:fine){.dd:hover .dd-menu,.dd:focus-within .dd-menu{display:block}}
+.dd.open .dd-menu{display:block}
+.dd.cerrar .dd-menu{display:none!important}
+.dd-item{display:flex;align-items:center;gap:14px;width:100%;padding:12px;border:0;border-radius:8px;background:none;text-align:left}
+.dd-item:hover{background:#f5f5f5}
+.dd-item .dd-ico{width:40px;height:40px;flex-shrink:0;display:flex;align-items:center;justify-content:center;border-radius:8px;background:rgba(255,90,0,.1);color:var(--orange);font-size:18px}
+.dd-item strong{display:block;font-family:var(--font-head);font-size:16px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;color:var(--black)}
+.dd-item span{display:block;font-size:13px;color:var(--muted)}
+.dd-sep{height:1px;background:var(--border);margin:4px 8px}
+
+/* ===== INICIO ===== */
+.hero{background:#0a0a0a;position:relative;overflow:hidden}
+.hero::before{content:'';position:absolute;inset:0;background:
+    radial-gradient(ellipse 800px 550px at 0% 0%,rgba(255,90,0,.28) 0%,transparent 60%),
+    radial-gradient(ellipse 1000px 750px at 100% 100%,rgba(255,90,0,.32) 0%,transparent 60%)}
+.hero-in{position:relative;z-index:1;display:grid;grid-template-columns:auto 1fr;gap:64px;align-items:center;padding-top:64px;padding-bottom:64px;max-width:1140px}
+.hero-logo-frame{display:inline-block;border:2px solid rgba(255,90,0,.45);border-radius:18px;padding:20px;background:rgba(0,0,0,.3)}
+.hero-logo-frame img{display:block;width:clamp(220px,24vw,330px);height:clamp(220px,24vw,330px);border-radius:8px;object-fit:cover}
+.paths-t{font-family:var(--font-head);font-size:clamp(24px,2.6vw,32px);font-weight:700;text-transform:uppercase;line-height:1.1;color:#fff;margin-bottom:6px}
+.paths-t em{font-style:normal;color:var(--orange)}
+.paths-sub{color:rgba(255,255,255,.7);margin-bottom:20px}
 .paths{display:grid;gap:10px}
-.paths-t{font-size:15px;font-weight:600;margin-bottom:2px}
-.path{display:flex;align-items:center;gap:16px;width:100%;text-align:left;background:var(--carbon-2);border:1px solid var(--carbon-line);border-radius:var(--r);padding:16px 18px;color:#fff;transition:border-color .15s,background-color .15s}
-.path:hover{border-color:var(--orange);background:#222129}
-.path-ico{width:46px;height:46px;flex-shrink:0;display:flex;align-items:center;justify-content:center;border:1px solid #3a3942;border-radius:var(--r);color:var(--orange);font-size:20px}
-.path-tx strong{display:block;font-size:17px;font-weight:600;line-height:1.3}
-.path-tx span{font-size:14px;color:#a9abb1}
-.path-arrow{margin-left:auto;color:#77767f}
-.hero-search{margin-top:8px;padding-top:16px;border-top:1px solid var(--carbon-line)}
-.hero-search label{display:block;font-size:14px;color:#c9cbcf;margin-bottom:8px}
+.path{display:flex;align-items:center;gap:16px;width:100%;padding:15px 18px;border:1px solid rgba(255,255,255,.14);border-radius:10px;background:rgba(255,255,255,.05);color:#fff;text-align:left;transition:border-color .15s,background-color .15s}
+.path:hover{border-color:var(--orange);background:rgba(255,90,0,.1)}
+.path-ico{width:46px;height:46px;flex-shrink:0;display:flex;align-items:center;justify-content:center;border-radius:8px;background:rgba(255,90,0,.15);color:var(--orange);font-size:20px}
+.path-tx strong{display:block;font-family:var(--font-head);font-size:18px;font-weight:600;letter-spacing:.3px;text-transform:uppercase;line-height:1.25}
+.path-tx span{font-size:14px;color:rgba(255,255,255,.65)}
+.path-arrow{margin-left:auto;color:rgba(255,255,255,.4)}
+.hero-search{margin-top:6px}
+.hero-search label{display:block;font-size:14px;color:rgba(255,255,255,.75);margin-bottom:8px}
 .hs-row{display:flex;gap:8px}
-.hs-row .inp{flex:1;min-width:0;border-color:#3a3942}
+.hs-row .inp{flex:1;min-width:0;border-color:transparent}
 
-.stats{background:var(--surface);border-bottom:1px solid var(--line)}
-.stats-in{display:grid;grid-template-columns:repeat(4,1fr)}
-.stat{display:flex;gap:14px;align-items:center;padding:22px 20px;border-left:1px solid var(--line)}
-.stat:first-child{border-left:0;padding-left:0}
-.stat>i{color:var(--orange);font-size:22px;width:26px;text-align:center}
-.stat strong{display:block;font-size:16px}
-.stat span{font-size:14px;color:var(--muted)}
+.sec{padding:56px 0}
+.sec-alt{background:var(--white)}
+.sec-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:28px}
+.sec-tag{display:inline-flex;align-items:center;gap:6px;margin-bottom:8px;padding:4px 12px;border:1px solid rgba(255,90,0,.3);border-radius:20px;background:rgba(255,90,0,.08);color:var(--orange-txt);font-size:12px;font-weight:700;letter-spacing:.5px;text-transform:uppercase}
+.sec-head h2{font-family:var(--font-head);font-size:clamp(24px,3vw,30px);font-weight:700;letter-spacing:.3px;text-transform:uppercase;line-height:1.15}
+.sec-head p{color:var(--muted);font-size:15px;margin-top:5px}
+.link-more{background:none;border:0;padding:8px 0;font-family:var(--font-head);font-size:15px;font-weight:600;letter-spacing:.3px;text-transform:uppercase;color:var(--orange-txt);white-space:nowrap}
+.link-more:hover{text-decoration:underline}
 
-.sec{padding:64px 0}
-.sec+.sec{border-top:1px solid var(--line)}
-.sec-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:26px}
-.sec-num{font-size:13px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--orange-txt);margin-bottom:8px}
-.sec h2{font-size:clamp(24px,3vw,32px);font-weight:700;line-height:1.2;letter-spacing:-.01em}
-.sec-sub{color:var(--muted);margin-top:6px;max-width:640px}
-.link-more{background:none;border:0;padding:8px 0;font-size:15px;font-weight:600;color:var(--ink);text-decoration:underline;text-underline-offset:4px;white-space:nowrap}
-.link-more:hover{color:var(--orange-txt)}
+/* Nuestras líneas */
+.lineas{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.linea-card{display:grid;grid-template-columns:1fr 170px;gap:16px;align-items:center;padding:24px 24px 24px 28px;border:1px solid var(--border);border-left:5px solid var(--orange);border-radius:10px;background:var(--white);text-align:left;transition:transform .15s,box-shadow .15s}
+.linea-card:hover{transform:translateY(-3px);box-shadow:0 8px 20px rgba(0,0,0,.12)}
+.lc-marca{display:block;font-family:var(--font-head);font-size:34px;font-weight:700;line-height:1;text-transform:uppercase;color:var(--black)}
+.lc-tipo{display:block;margin-top:4px;font-family:var(--font-head);font-size:19px;font-weight:600;letter-spacing:.3px;text-transform:uppercase;color:var(--orange-txt)}
+.lc-desc{display:block;margin:10px 0 16px;font-size:14px;color:var(--muted)}
+.lc-cta{display:inline-flex;align-items:center;gap:8px;font-family:var(--font-head);font-size:15px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;color:var(--black)}
+.lc-img{height:140px;display:flex;align-items:center;justify-content:center;background:var(--white)}
+.lc-img img{max-width:100%;max-height:100%;object-fit:contain}
 
-/* Grillas con líneas finas (fijas: 6 marcas y 5 categorías por fila) */
-.ruled{display:grid;background:var(--surface);border-top:1px solid var(--line);border-left:1px solid var(--line)}
-.ruled>*{border:0;border-right:1px solid var(--line);border-bottom:1px solid var(--line);background:var(--surface);text-align:left;transition:background-color .15s}
-.marca-grid{grid-template-columns:repeat(6,1fr)}
-.cat-grid{grid-template-columns:repeat(5,1fr)}
-.marca-card{position:relative;padding:24px 18px 20px}
-.marca-card::before{content:'';position:absolute;left:0;top:0;right:0;height:3px;background:var(--mc,var(--line))}
-.marca-card:hover,.cat-card:hover{background:#fafbfa}
-.marca-name{display:block;font-size:17px;font-weight:700}
-.marca-sub{display:block;font-size:14px;color:var(--muted);margin-top:2px}
-.cat-card{display:flex;flex-direction:column;gap:12px;padding:22px 18px}
-.cat-icon{font-size:30px;line-height:1;height:30px;color:var(--orange)}
-.cat-icon svg{width:30px;height:30px}
-.cat-name{font-size:16px;font-weight:600;line-height:1.3}
-.cat-count{font-size:14px;color:var(--muted);margin-top:-8px}
+/* MARCA CARDS — grilla fija de 6 columnas (12 marcas destacadas = 2 filas
+   exactas). Si el numero de marcas cambia en el futuro y deja de ser
+   multiplo de 6, hay que revisar esto a mano. */
+.marca-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:14px}
+.marca-card{background:var(--white);border:1px solid var(--border);border-bottom:3px solid var(--border);border-radius:8px;padding:22px 16px;text-align:center;transition:transform .15s,box-shadow .15s,border-color .15s}
+.marca-card:hover{transform:translateY(-3px);box-shadow:0 8px 20px rgba(0,0,0,.12);border-bottom-color:var(--orange)}
+.marca-name{display:block;font-family:var(--font-head);font-size:16px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;color:var(--black)}
+.marca-sub{display:block;font-size:12px;margin-top:4px;color:var(--muted)}
 
-.med-box{display:grid;grid-template-columns:320px 1fr;background:var(--surface);border:1px solid var(--line)}
-.med-fig{display:flex;align-items:center;justify-content:center;padding:28px;border-right:1px solid var(--line);background:#fbfcfb}
+/* CAT CARDS — grilla fija de 5 columnas (10 categorias = 2 filas exactas) */
+.cat-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:14px}
+.cat-card{background:var(--white);border:1px solid var(--border);border-radius:8px;padding:22px 16px;text-align:center;transition:transform .15s,box-shadow .15s,border-color .15s}
+.cat-card:hover{transform:translateY(-3px);box-shadow:0 8px 20px rgba(0,0,0,.12);border-color:var(--orange)}
+.cat-icon{display:block;font-size:30px;line-height:1;color:var(--orange);margin-bottom:10px}
+.cat-icon svg{width:1em;height:1em;display:inline-block;vertical-align:middle}
+.cat-name{display:block;font-family:var(--font-head);font-size:14px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--black)}
+.cat-count{display:block;font-size:12px;margin-top:3px;color:var(--muted)}
+
+/* Medidas */
+.med-box{display:grid;grid-template-columns:320px 1fr;overflow:hidden;border:1px solid var(--border);border-radius:10px;background:var(--white)}
+.med-fig{display:flex;align-items:center;justify-content:center;padding:28px;border-right:1px solid var(--border);background:#fafafa}
 .med-fig svg{width:100%;max-width:250px;height:auto}
 .med-form{padding:32px}
 .med-fields{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px}
-.field label{display:block;font-size:15px;font-weight:600;margin-bottom:6px}
+.field label{display:block;font-size:15px;font-weight:700;margin-bottom:6px}
 .field small{font-size:13px;font-weight:400;color:var(--muted)}
 .med-help{font-size:15px;color:var(--muted);margin-bottom:20px;max-width:560px}
 
-.ayuda{background:var(--carbon);color:#fff}
+.ayuda{background:linear-gradient(135deg,#111,#000);color:#fff}
 .ayuda-in{display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap;padding-top:44px;padding-bottom:44px}
-.ayuda h2{font-size:24px;font-weight:700;line-height:1.25}
-.ayuda p{color:#c9cbcf;margin-top:6px;max-width:620px}
+.ayuda h2{font-family:var(--font-head);font-size:26px;font-weight:700;text-transform:uppercase;line-height:1.2}
+.ayuda p{color:rgba(255,255,255,.7);margin-top:6px;max-width:620px}
 
-/* ===== Productos ===== */
-.prod-head{background:var(--surface);border-bottom:1px solid var(--line)}
-.prod-head-in{padding-top:26px;padding-bottom:20px}
-.prod-head h1{font-size:28px;font-weight:700;letter-spacing:-.01em}
-.prod-head p{color:var(--muted)}
-.search{position:relative;margin-top:16px;max-width:760px}
-.search>i{position:absolute;left:15px;top:50%;transform:translateY(-50%);color:var(--muted)}
-.search .inp{padding-left:44px;padding-right:48px;min-height:52px}
-.search-clear{position:absolute;right:4px;top:50%;transform:translateY(-50%);width:44px;height:44px;border:0;background:none;color:var(--muted);font-size:18px}
-.prod-layout{display:grid;grid-template-columns:290px 1fr;gap:28px;align-items:start;padding-top:24px;padding-bottom:64px}
-.filtros{position:sticky;top:calc(var(--head-total) + 16px);max-height:calc(100vh - var(--head-total) - 32px);overflow:auto;background:var(--surface);border:1px solid var(--line)}
-.f-head,.f-foot{display:none}
-.f-sec{padding:18px;border-bottom:1px solid var(--line)}
-.f-tit{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:12px}
-.f-tit i{color:var(--orange);width:16px;text-align:center}
-.f-med{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.f-med label,.f-lbl{display:block;font-size:14px;font-weight:600;margin-bottom:4px}
-.f-med .inp{min-height:44px;padding:0 8px}
-.f-help{font-size:13px;color:var(--muted);margin:8px 0 14px}
-.chk{display:flex;align-items:center;gap:10px;min-height:38px;font-size:15px;cursor:pointer}
-.chk input{width:18px;height:18px;accent-color:var(--orange);flex-shrink:0;cursor:pointer}
-.chk span:first-of-type{flex:1}
-.chk .n{font-size:13px;color:var(--muted)}
-.f-more{background:none;border:0;padding:8px 0 0;font-size:14px;font-weight:600;text-decoration:underline;text-underline-offset:3px}
-.seg{display:grid;gap:6px}
-.seg button{min-height:42px;border:1px solid var(--line-2);border-radius:var(--r);background:#fff;padding:0 12px;text-align:left;font-size:15px}
-.seg button:hover{border-color:var(--ink)}
-.seg button.active{background:var(--ink);border-color:var(--ink);color:#fff;font-weight:600}
-.f-range{display:flex;align-items:center;gap:8px}
-.f-range .inp{min-height:44px}
-.f-range span{color:var(--muted)}
-.f-ov{display:none}
+/* ===== PRODUCTOS ===== */
+.prod-layout{display:flex;align-items:flex-start;min-height:calc(100vh - var(--head-total))}
+.sidebar{width:var(--sb-w);flex-shrink:0;position:sticky;top:var(--head-total);max-height:calc(100vh - var(--head-total));overflow-y:auto;background:var(--white);border-right:1px solid var(--border)}
+.sb-head,.sb-foot{display:none}
+.sb-body{padding:20px 16px}
+.sb-section{margin-bottom:20px;padding-bottom:18px;border-bottom:1px solid var(--border)}
+.sb-section:last-child{border-bottom:none;margin-bottom:0}
+.sb-title{display:flex;align-items:center;gap:8px;margin-bottom:12px;font-family:var(--font-head);font-size:14px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--black)}
+.sb-title i{color:var(--orange);width:16px;text-align:center}
+.sb-check{display:flex;align-items:center;gap:9px;min-height:34px;font-size:14px;cursor:pointer}
+.sb-check input{width:17px;height:17px;accent-color:var(--orange);cursor:pointer;flex-shrink:0}
+.sb-check span:first-of-type{flex:1}
+.sb-cnt{color:var(--muted);font-size:12px}
+.sb-more{background:none;border:0;padding:8px 0 0;font-size:13px;font-weight:700;color:var(--orange-txt)}
+.sb-med{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.sb-med label,.sb-lbl{display:block;font-size:12px;font-weight:700;margin-bottom:3px}
+.sb-med .inp{min-height:40px;padding:0 8px;font-size:15px}
+.sb-help{font-size:12px;color:var(--muted);margin:8px 0 12px}
+.sb-range{display:flex;gap:8px;align-items:center}
+.sb-range .inp{min-height:40px;font-size:15px}
+.sb-range span{color:var(--muted);font-size:13px}
+.sb-select{min-height:40px;font-size:15px}
+.sb-ov{display:none}
+.solo-rmh .fs-carbon{display:none}
 
-.toolbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
-.res-n{font-weight:600}
-.orden{margin-left:auto;display:flex;align-items:center;gap:8px;font-size:14px;color:var(--muted)}
-.orden .inp{min-height:42px;width:auto;font-size:15px}
+.prod-main{flex:1;min-width:0}
+.prod-topbar{display:flex;align-items:center;gap:12px;padding:16px 20px;background:var(--white);border-bottom:1px solid var(--border)}
+.search{position:relative;flex:1}
+.search>i{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--muted)}
+.search .inp{padding-left:40px;padding-right:44px;background:var(--bg)}
+.search .inp:focus{background:var(--white)}
+.search-clear{position:absolute;right:2px;top:50%;transform:translateY(-50%);width:42px;height:42px;border:0;background:none;color:var(--muted);font-size:17px}
 .btn-filtros{display:none}
-.f-count{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;border-radius:11px;background:var(--orange);color:#fff;font-size:13px;font-weight:700;padding:0 6px}
-.chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
-.chip{display:inline-flex;align-items:center;gap:8px;min-height:36px;padding:0 12px;border:1px solid var(--line-2);border-radius:var(--r);background:#fff;font-size:14px}
-.chip i{color:var(--muted)}
-.chip:hover{border-color:var(--ink)}
-.chip-all{background:none;border:0;min-height:36px;padding:0 4px;font-size:14px;font-weight:600;text-decoration:underline;text-underline-offset:3px}
+.f-count{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 5px;border-radius:10px;background:#fff;color:var(--orange-txt);font-family:var(--font-body);font-size:12px;font-weight:800}
 
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(236px,1fr));gap:16px}
-.card{display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);transition:border-color .15s}
-.card:hover{border-color:var(--line-2)}
-.card-img{height:180px;display:flex;align-items:center;justify-content:center;padding:12px;border-bottom:1px solid var(--line)}
+/* Selector de línea: grande y explicado */
+.lineas-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:16px 20px 0}
+.lt{display:flex;align-items:center;gap:12px;min-height:66px;padding:10px 16px;border:2px solid var(--border);border-radius:10px;background:var(--white);text-align:left;transition:border-color .15s,background-color .15s}
+.lt:hover{border-color:#bbb}
+.lt.active{border-color:var(--orange);background:#fff6f0}
+.lt .lt-ico{width:40px;height:40px;flex-shrink:0;display:flex;align-items:center;justify-content:center;border-radius:8px;background:var(--bg);color:var(--muted);font-size:18px}
+.lt.active .lt-ico{background:var(--orange);color:#fff}
+.lt strong{display:block;font-family:var(--font-head);font-size:17px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;line-height:1.2}
+.lt span{display:block;font-size:13px;color:var(--muted)}
+
+.toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:14px 20px 0}
+.res-n{font-size:14px;color:var(--muted);font-weight:600}
+.orden{margin-left:auto;display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.orden .inp{width:auto;min-height:38px;font-size:14px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;padding:10px 20px 0}
+.chip{display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:0 12px;border:1px solid rgba(255,107,0,.25);border-radius:20px;background:rgba(255,107,0,.1);color:var(--orange-txt);font-size:13px;font-weight:600}
+.chip:hover{border-color:var(--orange)}
+.chip-all{min-height:32px;padding:0 6px;border:0;background:none;font-size:13px;font-weight:700;color:var(--muted);text-decoration:underline}
+.grid-wrap{padding:16px 20px 40px}
+.grid{display:grid;grid-template-columns:repeat(5,1fr);gap:13px}
+
+/* PRODUCT CARD — foto sobre fondo blanco */
+.card{display:flex;flex-direction:column;overflow:hidden;background:var(--white);border:1px solid var(--border);border-radius:10px;transition:border-color .15s,box-shadow .15s}
+.card:hover{border-color:var(--orange);box-shadow:0 4px 16px rgba(255,107,0,.12)}
+.card-img{height:160px;display:flex;align-items:center;justify-content:center;padding:10px;background:#fff;border-bottom:1px solid #f0f0f0}
 .card-img img{max-width:100%;max-height:100%;object-fit:contain}
-.card-img svg{width:56px;height:56px}
-.card-body{flex:1;display:flex;flex-direction:column;gap:4px;padding:14px}
-.card-tipo{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
-.card-marca{font-size:17px;font-weight:700;line-height:1.25}
-.card-desc{font-size:14px;line-height:1.4;color:var(--ink-2);overflow-wrap:anywhere}
-.card-dims{font-size:14px;font-weight:500;margin-top:2px}
-.card-dims i{color:var(--muted);margin-right:4px}
-.tag{align-self:flex-start;margin-top:2px;padding:2px 8px;border:1px solid var(--line-2);border-radius:var(--r);font-size:12px;font-weight:600;color:var(--muted)}
-.tag-ok{border-color:#bfe5cb;background:#effaf2;color:var(--ok)}
-.card-cod{margin-top:auto;padding-top:6px;font-size:13px;color:var(--muted)}
-.card-precio{font-size:22px;font-weight:700;letter-spacing:-.01em}
-.card-buy{display:flex;gap:8px;margin-top:8px}
-.card-buy .btn{flex:1;padding:0 10px}
-.card-encart{font-size:13px;font-weight:500;color:var(--ok);margin-top:4px}
-.qty{display:flex;height:44px;border:1px solid var(--line-2);border-radius:var(--r);background:#fff;flex-shrink:0}
-.qty button{width:36px;border:0;background:none;font-size:20px;line-height:1}
-.qty button:hover{background:var(--bg)}
-.qty input,.qty span{width:42px;border:0;border-left:1px solid var(--line);border-right:1px solid var(--line);text-align:center;font-size:16px;font-weight:600;-moz-appearance:textfield;display:flex;align-items:center;justify-content:center}
-.qty input::-webkit-inner-spin-button,.qty input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
-.mas{text-align:center;margin-top:28px}
-.mas p{font-size:14px;color:var(--muted);margin-bottom:10px}
-.vacio{background:var(--surface);border:1px solid var(--line);padding:44px 24px;text-align:center}
-.vacio h3{font-size:20px;margin-bottom:8px}
+.card-img svg{width:50px;height:50px}
+.card-body{flex:1;display:flex;flex-direction:column;gap:4px;padding:11px}
+.card-badges{display:flex;gap:4px;flex-wrap:wrap}
+.badge{display:inline-block;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700;text-transform:uppercase}
+.bl{background:rgba(255,107,0,.1);color:var(--orange-txt)}
+.bc{background:#f0f0f0;color:var(--muted)}
+.card-cod{font-family:var(--font-head);font-size:12px;font-weight:700;letter-spacing:.5px;color:var(--orange-txt);margin-top:2px}
+.card-marca{font-size:14px;font-weight:700;line-height:1.25}
+.card-desc{font-size:13px;line-height:1.35;color:#333;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.card-dims{font-size:12px;color:var(--muted)}
+.card-dims i{margin-right:4px}
+.tag{align-self:flex-start;padding:1px 7px;border:1px solid #ddd;border-radius:4px;font-size:11px;font-weight:700;color:var(--muted)}
+.tag-ok{border-color:#bfe5cb;background:#effaf2;color:var(--green)}
+.card-precio{margin-top:auto;padding-top:4px;font-family:var(--font-head);font-size:19px;font-weight:700;color:var(--black)}
+.card-qty{display:flex;align-items:center;gap:6px;margin-top:4px}
+.card-qty button{width:32px;height:32px;border:1px solid var(--border);border-radius:6px;background:var(--bg);font-size:16px;font-weight:700;line-height:1}
+.card-qty button:hover{border-color:var(--orange);color:var(--orange-txt)}
+.card-qty input{width:46px;height:32px;border:1px solid var(--border);border-radius:6px;text-align:center;font-size:15px;-moz-appearance:textfield}
+.card-qty input::-webkit-inner-spin-button,.card-qty input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+.btn-add{width:100%;min-height:40px;margin-top:7px;padding:0 8px;border:0;border-radius:6px;background:var(--orange);color:#fff;font-family:var(--font-head);font-size:14px;font-weight:700;letter-spacing:.3px;text-transform:uppercase}
+.btn-add:hover{background:var(--orange2)}
+.card-encart{font-size:12px;font-weight:600;color:var(--green);margin-top:4px}
+.mas{text-align:center;margin-top:26px}
+.mas p{font-size:13px;color:var(--muted);margin-bottom:10px}
+.vacio{padding:44px 24px;text-align:center;background:var(--white);border:1px solid var(--border);border-radius:10px}
+.vacio h3{font-family:var(--font-head);font-size:22px;text-transform:uppercase;margin-bottom:8px}
 .vacio p{color:var(--muted);max-width:480px;margin:0 auto 20px}
 .vacio .acts{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
 
-/* ===== Nosotros ===== */
-.nos{display:grid;grid-template-columns:1.25fr 1fr;gap:44px;align-items:start}
-.nos h1{font-size:clamp(28px,3.6vw,40px);font-weight:700;line-height:1.15;letter-spacing:-.01em;margin-bottom:16px}
-.nos-lead{font-size:18px;color:var(--ink-2);margin-bottom:28px}
-.nos-list{grid-template-columns:1fr 1fr}
-.nos-item{padding:22px}
-.nos-item>i{display:block;color:var(--orange);font-size:22px;margin-bottom:12px}
-.nos-item h3{font-size:16px;font-weight:700;margin-bottom:4px}
-.nos-item p{font-size:14px;color:var(--muted)}
-.contacto{background:var(--surface);border:1px solid var(--line)}
-.contacto h2{font-size:18px;font-weight:700;padding:18px 20px;border-bottom:1px solid var(--line)}
-.c-row{display:flex;align-items:center;gap:14px;width:100%;padding:16px 20px;border:0;border-bottom:1px solid var(--line);background:none;text-align:left;text-decoration:none;color:inherit}
-.c-row:last-child{border-bottom:0}
+/* ===== NOSOTROS ===== */
+.nosotros-wrap{max-width:900px;margin:0 auto}
+.nos-hero{background:linear-gradient(135deg,#111,#000);border-radius:16px;padding:48px 40px;margin-bottom:36px;text-align:center}
+.nos-hero h1{font-family:var(--font-head);font-size:30px;font-weight:700;text-transform:uppercase;color:#fff;margin-bottom:12px}
+.nos-hero h1 span{color:var(--orange)}
+.nos-hero p{color:rgba(255,255,255,.7);font-size:16px;line-height:1.7;max-width:580px;margin:0 auto}
+.nos-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:28px}
+.n-card{background:var(--white);border:1px solid var(--border);border-radius:8px;padding:22px}
+.n-icon{font-size:28px;color:var(--orange);margin-bottom:10px}
+.n-card h3{font-family:var(--font-head);font-size:15px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;margin-bottom:6px}
+.n-card p{font-size:14px;color:var(--muted);line-height:1.6}
+.contact-box{background:var(--white);border:1px solid var(--border);border-radius:8px;padding:24px}
+.contact-box h2{font-family:var(--font-head);font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;margin-bottom:10px}
+.c-row{display:flex;align-items:center;gap:14px;width:100%;padding:12px 0;border:0;border-bottom:1px solid var(--border);background:none;text-align:left;text-decoration:none;color:inherit}
+.c-row:last-child{border-bottom:none}
 .c-row:hover .c-val{color:var(--orange-txt)}
-.c-ico{width:44px;height:44px;flex-shrink:0;display:flex;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:var(--r);color:var(--orange);font-size:18px}
-.c-lbl{display:block;font-size:13px;color:var(--muted)}
-.c-val{display:block;font-weight:600;overflow-wrap:anywhere}
+.c-ico{width:40px;height:40px;flex-shrink:0;display:flex;align-items:center;justify-content:center;border-radius:9px;background:var(--bg);color:var(--orange);font-size:17px}
+.c-lbl{display:block;font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--muted)}
+.c-val{display:block;font-size:15px;font-weight:700;overflow-wrap:anywhere}
 
-/* ===== Pie ===== */
-footer{background:var(--carbon);color:#c9cbcf}
-.f-in{display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;gap:28px;padding-top:48px;padding-bottom:28px}
-.f-brand{font-size:20px;font-weight:800;color:#fff;margin-bottom:8px}
-.f-brand span{color:var(--orange)}
-.f-in p{font-size:14px;color:#a9abb1;max-width:300px}
-footer h3{font-size:13px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#8d8f96;margin-bottom:10px}
-.f-link{display:block;padding:5px 0;border:0;background:none;color:#e6e7e9;font-size:14px;text-align:left;text-decoration:none}
-.f-link:hover{color:#fff;text-decoration:underline}
-.f-bot{border-top:1px solid var(--carbon-line);padding-top:16px;padding-bottom:20px;font-size:13px;color:#8d8f96}
-.f-bot a{color:inherit}
+/* ===== FOOTER ===== */
+footer{background:var(--black2);border-top:3px solid var(--orange)}
+.fi{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:24px;padding-top:36px;padding-bottom:20px;max-width:1060px}
+.f-logo{display:flex;align-items:center;gap:12px;margin-bottom:8px}
+.f-logo img{height:52px;width:52px;border-radius:6px;object-fit:cover}
+.fb{font-family:var(--font-head);font-size:18px;font-weight:700;text-transform:uppercase;color:#fff}
+.fb span{color:var(--orange)}
+.fd{font-size:13px;color:rgba(255,255,255,.6);line-height:1.5}
+.fc h3{font-family:var(--font-head);font-size:12px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:rgba(255,255,255,.5);margin-bottom:8px}
+.fc a,.fc button{display:block;padding:4px 0;border:0;background:none;font-size:14px;color:rgba(255,255,255,.85);text-align:left;text-decoration:none}
+.fc a:hover,.fc button:hover{color:var(--orange)}
+.ft{text-align:center;padding:16px 28px 22px;border-top:1px solid rgba(255,255,255,.1);font-size:12px;color:rgba(255,255,255,.45)}
+.ft-cred{margin-top:6px;font-size:11px}
+.ft-cred a{color:inherit}
 
-/* ===== Pedido (panel lateral) ===== */
-.ov{position:fixed;inset:0;background:rgba(15,14,18,.5);z-index:250}
-.drawer{position:fixed;top:0;right:0;z-index:260;width:min(440px,100%);height:100%;display:flex;flex-direction:column;background:#fff;border-left:1px solid var(--line);transform:translateX(100%);visibility:hidden;transition:transform .25s,visibility 0s .25s}
+/* ===== PEDIDO (panel lateral) ===== */
+.ov{position:fixed;inset:0;z-index:250;background:rgba(0,0,0,.45)}
+.drawer{position:fixed;top:0;right:0;z-index:260;width:min(430px,100%);height:100%;display:flex;flex-direction:column;background:var(--white);box-shadow:-4px 0 20px rgba(0,0,0,.12);transform:translateX(100%);visibility:hidden;transition:transform .25s,visibility 0s .25s}
 .drawer.open{transform:none;visibility:visible;transition:transform .25s}
-.dr-head{display:flex;align-items:center;justify-content:space-between;padding:10px 12px 10px 20px;border-bottom:1px solid var(--line)}
-.dr-head h2{font-size:20px;font-weight:700}
+.dr-head{display:flex;align-items:center;justify-content:space-between;padding:10px 10px 10px 20px;border-bottom:1px solid var(--border)}
+.dr-head h2{font-family:var(--font-head);font-size:20px;font-weight:700;text-transform:uppercase}
 .x{width:44px;height:44px;border:0;background:none;color:var(--muted);font-size:20px}
-.x:hover{color:var(--ink)}
+.x:hover{color:var(--text)}
 .dr-items{flex:1;overflow:auto;padding:0 20px}
-.ci{display:grid;grid-template-columns:60px 1fr auto;gap:12px;align-items:start;padding:16px 0;border-bottom:1px solid var(--line)}
-.ci-img{width:60px;height:60px;display:flex;align-items:center;justify-content:center;padding:4px;border:1px solid var(--line)}
+.ci{display:grid;grid-template-columns:58px 1fr auto;gap:12px;align-items:start;padding:14px 0;border-bottom:1px solid var(--border)}
+.ci-img{width:58px;height:58px;display:flex;align-items:center;justify-content:center;padding:4px;border:1px solid var(--border);border-radius:6px;background:#fff}
 .ci-img img{max-width:100%;max-height:100%;object-fit:contain}
-.ci-t{font-size:15px;font-weight:600;line-height:1.3}
-.ci-cod{font-weight:400;color:var(--muted);font-size:13px}
-.ci-d{font-size:13px;color:var(--muted);overflow-wrap:anywhere}
-.ci-p{font-size:14px;margin-top:4px}
-.ci .qty{height:40px;margin-top:8px;width:max-content}
-.btn-rm{width:40px;height:40px;border:0;background:none;color:var(--muted)}
-.btn-rm:hover{color:var(--err)}
+.ci-cod{font-family:var(--font-head);font-size:13px;font-weight:700;color:var(--orange-txt)}
+.ci-t{font-size:14px;font-weight:700;line-height:1.3}
+.ci-d{font-size:12px;color:var(--muted);overflow-wrap:anywhere}
+.ci-p{font-size:14px;font-weight:600;margin-top:2px}
+.ci-qty{display:flex;align-items:center;margin-top:8px;border:1px solid var(--border);border-radius:6px;width:max-content}
+.ci-qty button{width:36px;height:36px;border:0;background:none;font-size:18px}
+.ci-qty button:hover{color:var(--orange-txt)}
+.ci-qty span{min-width:34px;text-align:center;font-weight:700}
+.btn-rm{width:38px;height:38px;border:0;background:none;color:var(--muted)}
+.btn-rm:hover{color:var(--red)}
 .dr-vacio{padding:56px 0;text-align:center;color:var(--muted)}
 .dr-vacio p{margin-bottom:16px}
-.dr-foot{display:grid;gap:8px;padding:16px 20px calc(16px + env(safe-area-inset-bottom));border-top:1px solid var(--line)}
+.dr-foot{display:grid;gap:8px;padding:16px 20px calc(16px + env(safe-area-inset-bottom));border-top:1px solid var(--border)}
 .dr-total{display:flex;justify-content:space-between;align-items:baseline}
 .dr-total span{font-size:15px;color:var(--muted)}
-.dr-total strong{font-size:26px;letter-spacing:-.01em}
-.dr-note{font-size:13px;color:var(--muted);margin-bottom:6px}
-.dr-vaciar{justify-self:center;background:none;border:0;padding:6px;font-size:14px;color:var(--muted);text-decoration:underline}
+.dr-total strong{font-family:var(--font-head);font-size:26px}
+.dr-note{font-size:12px;color:var(--muted);margin-bottom:4px}
+.dr-vaciar{justify-self:center;padding:6px;border:0;background:none;font-size:13px;color:var(--muted);text-decoration:underline}
 
-/* ===== Formulario ===== */
-.modal{position:fixed;inset:0;z-index:400;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(15,14,18,.55)}
-.modal-box{width:min(480px,100%);max-height:calc(100vh - 32px);overflow:auto;background:#fff;border-radius:var(--r);padding:28px}
-.modal h2{font-size:22px;font-weight:700;line-height:1.25;margin-bottom:6px}
-.modal-sub{font-size:15px;color:var(--muted);margin-bottom:20px}
-.fg{margin-bottom:16px}
-.fg label{display:block;font-size:15px;font-weight:600;margin-bottom:6px}
+/* ===== FORMULARIO ===== */
+.modal{position:fixed;inset:0;z-index:400;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(0,0,0,.5)}
+.modal-box{width:min(480px,100%);max-height:calc(100vh - 32px);overflow:auto;padding:28px;border-radius:14px;background:var(--white);box-shadow:0 20px 60px rgba(0,0,0,.25)}
+.modal h2{font-family:var(--font-head);font-size:22px;font-weight:700;text-transform:uppercase;line-height:1.2;margin-bottom:6px}
+.modal-sub{font-size:14px;color:var(--muted);margin-bottom:20px}
+.fg{margin-bottom:14px}
+.fg label{display:block;font-size:14px;font-weight:700;margin-bottom:5px}
 .fg .opt{font-weight:400;color:var(--muted)}
-.aviso{font-size:13px;color:var(--muted)}
+.aviso{font-size:12px;color:var(--muted);line-height:1.5}
 .aviso a{color:var(--orange-txt)}
 .modal-acts{display:flex;gap:10px;margin-top:22px}
 .modal-acts .btn:last-child{flex:1}
 
 /* ===== Aviso "agregado" y barra de pedido (celular) ===== */
-.toast{position:fixed;left:50%;bottom:20px;z-index:350;display:flex;align-items:center;gap:14px;width:max-content;max-width:calc(100% - 32px);padding:10px 10px 10px 18px;border-radius:var(--r);background:var(--carbon);color:#fff;font-size:15px;opacity:0;pointer-events:none;transform:translate(-50%,16px);transition:opacity .2s,transform .2s}
+.toast{position:fixed;left:50%;bottom:20px;z-index:350;display:flex;align-items:center;gap:14px;width:max-content;max-width:calc(100% - 32px);padding:10px 10px 10px 18px;border-radius:10px;background:#111;color:#fff;font-size:14px;box-shadow:0 8px 24px rgba(0,0,0,.25);opacity:0;pointer-events:none;transform:translate(-50%,16px);transition:opacity .2s,transform .2s}
 .toast.show{opacity:1;pointer-events:auto;transform:translate(-50%,0)}
 .toast i{color:#4ade80}
-.toast button{min-height:38px;padding:0 12px;border:1px solid rgba(255,255,255,.4);border-radius:var(--r);background:none;color:#fff;font-size:14px;font-weight:600;white-space:nowrap}
+.toast button{min-height:36px;padding:0 12px;border:1px solid rgba(255,255,255,.35);border-radius:6px;background:none;color:#fff;font-size:13px;font-weight:700;white-space:nowrap}
 .pbar{display:none}
 
 /* ===== Responsive ===== */
+@media(max-width:1320px){.grid{grid-template-columns:repeat(4,1fr)}}
 @media(max-width:1000px){
-  .marca-grid{grid-template-columns:repeat(3,1fr)}
-  .cat-grid{grid-template-columns:repeat(2,1fr)}
-  .hero-in{grid-template-columns:1fr;gap:36px;padding-top:44px;padding-bottom:44px}
-  .stats-in{grid-template-columns:1fr 1fr}
-  .stat{border-left:0;border-top:1px solid var(--line);padding:16px 0}
-  .stat:nth-child(-n+2){border-top:0}
-  .prod-layout{grid-template-columns:1fr;padding-top:16px}
+  .marca-grid,.cat-grid{grid-template-columns:repeat(3,1fr)}
+  .hero-in{grid-template-columns:1fr;gap:32px;padding-top:40px;padding-bottom:44px;justify-items:center}
+  .paths-wrap{width:100%;max-width:620px}
+  .lineas{grid-template-columns:1fr}
   .btn-filtros{display:inline-flex}
-  .f-ov{display:block;position:fixed;inset:0;z-index:290;background:rgba(15,14,18,.5)}
-  .filtros{position:fixed;top:0;left:0;bottom:0;z-index:300;width:min(400px,100%);max-height:none;border:0;display:flex;flex-direction:column;transform:translateX(-100%);visibility:hidden;transition:transform .25s,visibility 0s .25s}
-  .filtros.open{transform:none;visibility:visible;transition:transform .25s}
-  .f-head{display:flex;align-items:center;justify-content:space-between;padding:8px 8px 8px 18px;border-bottom:1px solid var(--line);font-size:18px}
-  .f-body{flex:1;overflow:auto}
-  .f-foot{display:grid;grid-template-columns:auto 1fr;gap:10px;padding:12px 18px calc(12px + env(safe-area-inset-bottom));border-top:1px solid var(--line)}
-  .f-clear-d{display:none}
-  .nos{grid-template-columns:1fr}
-  .f-in{grid-template-columns:1fr 1fr}
-  .f-in>div:first-child{grid-column:1/-1}
+  .sb-ov{display:block;position:fixed;inset:0;z-index:290;background:rgba(0,0,0,.45)}
+  .sidebar{position:fixed;top:0;left:0;bottom:0;z-index:300;width:min(380px,100%);max-height:none;display:flex;flex-direction:column;border:0;transform:translateX(-100%);visibility:hidden;transition:transform .25s,visibility 0s .25s}
+  .sidebar.open{transform:none;visibility:visible;transition:transform .25s}
+  .sb-head{display:flex;align-items:center;justify-content:space-between;padding:8px 8px 8px 18px;border-bottom:1px solid var(--border);font-family:var(--font-head);font-size:19px;font-weight:700;text-transform:uppercase}
+  .sb-body{flex:1;overflow:auto}
+  .sb-foot{display:grid;grid-template-columns:auto 1fr;gap:10px;padding:12px 16px calc(12px + env(safe-area-inset-bottom));border-top:1px solid var(--border)}
+  .sb-clear-d{display:none}
 }
 @media(max-width:760px){
-  :root{--head-h:56px;--head-total:101px}
+  :root{--nav-h:58px;--head-total:104px}
   .wrap{padding-left:16px;padding-right:16px}
-  .top-in{gap:12px}
-  .logo{font-size:19px}
-  .nav{display:none}
-  .tabs{display:flex;border-top:1px solid var(--line)}
-  .tabs .nav-btn{flex:1;height:44px;padding:0}
-  .top-acts .btn{padding:0 12px}
+  .nav-logo{font-size:20px;margin-right:auto}
+  .top-in .nav{display:none}
+  .nav-right{gap:8px}
+  .nav-right .btn{padding:0 13px}
   .hide-sm{display:none}
-  .sec{padding:44px 0}
-  .sec-head{flex-direction:column;align-items:flex-start;gap:8px}
+  .tabs{display:grid;grid-template-columns:repeat(3,1fr);height:46px;border-top:1px solid rgba(255,255,255,.12)}
+  .tabs .dd{width:100%}
+  .tabs .nav-link,.tabs .dd>.nav-link{width:100%;height:46px;justify-content:center;border-radius:0;font-size:15px}
+  .tabs .dd-menu{position:fixed;top:var(--head-total);left:8px;right:8px;min-width:0;border-radius:10px}
+  .hero-logo-frame{padding:12px}
+  .hero-logo-frame img{width:150px;height:150px}
+  .paths-t,.paths-sub{text-align:center}
+  .sec{padding:40px 0}
+  .sec-head{flex-direction:column;align-items:flex-start;gap:6px}
+  .marca-grid,.cat-grid{grid-template-columns:repeat(2,1fr)}
+  .linea-card{grid-template-columns:1fr 110px;padding:18px 16px 18px 20px}
+  .lc-marca{font-size:28px}
+  .lc-img{height:100px}
   .med-box{grid-template-columns:1fr}
-  .med-fig{border-right:0;border-bottom:1px solid var(--line);padding:16px}
+  .med-fig{border-right:0;border-bottom:1px solid var(--border);padding:16px}
   .med-fig svg{max-width:200px}
   .med-form{padding:20px}
   .med-fields{gap:8px}
-  .med-form .btn{width:100%}
-  .ayuda-in .btn{width:100%}
+  .med-form .btn,.ayuda-in .btn{width:100%}
+  .nos-hero{padding:32px 20px}
+  .prod-topbar{padding:12px 12px}
+  .lineas-tabs{gap:6px;padding:12px 12px 0}
+  .lt{flex-direction:column;justify-content:center;gap:4px;min-height:74px;padding:8px 4px;text-align:center}
+  .lt .lt-ico{width:30px;height:30px;font-size:15px}
+  .lt strong{font-size:14px}
+  .lt span{font-size:11px}
+  .toolbar{padding:12px 12px 0}
   .orden span{display:none}
-  body.con-pedido{padding-bottom:76px}
+  .chips{padding:8px 12px 0}
+  .grid-wrap{padding:12px 8px 32px}
+  /* 3 productos por fila: tarjeta compacta (la cantidad se ajusta en el pedido) */
+  .grid{grid-template-columns:repeat(3,1fr);gap:6px}
+  .card-img{height:96px;padding:6px}
+  .card-body{padding:7px;gap:2px}
+  .card-badges,.card-qty,.card-dims{display:none}
+  .card-cod{font-size:12px;margin-top:0}
+  .card-marca{font-size:12px}
+  .card-desc{font-size:12px;line-height:1.3}
+  .tag{font-size:10px;padding:1px 4px}
+  .card-precio{font-size:16px}
+  .btn-add{min-height:38px;margin-top:5px;font-size:13px;padding:0 4px}
+  .card-encart{font-size:11px}
+  .fi{text-align:center}
+  .f-logo{justify-content:center}
+  .fc a,.fc button{text-align:center;width:100%}
+  body.con-pedido{padding-bottom:74px}
   body.con-pedido .pbar{display:flex}
-  .pbar{position:fixed;left:0;right:0;bottom:0;z-index:200;align-items:center;gap:12px;padding:10px 16px calc(10px + env(safe-area-inset-bottom));background:var(--surface);border-top:1px solid var(--line)}
-  .pbar-tx{flex:1;font-size:14px;line-height:1.3;color:var(--muted)}
-  .pbar-tx strong{display:block;font-size:18px;color:var(--ink)}
-  body.con-pedido .toast{bottom:88px}
+  .pbar{position:fixed;left:0;right:0;bottom:0;z-index:200;align-items:center;gap:12px;padding:10px 16px calc(10px + env(safe-area-inset-bottom));background:var(--white);border-top:1px solid var(--border);box-shadow:0 -2px 10px rgba(0,0,0,.08)}
+  .pbar-tx{flex:1;font-size:13px;line-height:1.3;color:var(--muted)}
+  .pbar-tx strong{display:block;font-family:var(--font-head);font-size:20px;color:var(--text)}
+  body.con-pedido .toast{bottom:86px}
 }
-@media(max-width:640px){
-  .grid{grid-template-columns:1fr;gap:10px}
-  .card{display:grid;grid-template-columns:104px 1fr;align-items:start}
-  .card-img{height:auto;aspect-ratio:1;border-bottom:0;border-right:1px solid var(--line);padding:8px}
-  .card-body{padding:12px}
-  .card-marca{font-size:16px}
-  .card-precio{font-size:20px}
-}
-@media(max-width:560px){
-  .marca-grid,.cat-grid{grid-template-columns:repeat(2,1fr)}
-  .nos-list{grid-template-columns:1fr}
-  .hero-btns .btn{width:100%}
+@media(max-width:380px){
+  .nav-logo{font-size:18px}
+  .card-img{height:84px}
 }
 @media(prefers-reduced-motion:reduce){
   html{scroll-behavior:auto}
@@ -733,8 +798,8 @@ const NO_MARCA = new Set(['RMH','Moncar','Electrodomesticos','Cobreados','Porta 
   'Lavarropas','Aspiradora','Ventilador','Batidora','Maquina De Coser','Lustra Aspiradora','Hidrolavadora',
   'Enceradoras','Afeitadoras','Bordeadora','Barre Alfombras']);
 
-const SVG_MC=`<svg viewBox="0 0 50 50" fill="none" aria-hidden="true"><rect x="16" y="14" width="18" height="28" stroke="#9aa09d" stroke-width="1.8"/><path d="M25 14V5" stroke="#9aa09d" stroke-width="1.8"/></svg>`;
-const SVG_RMH=`<svg viewBox="0 0 50 50" fill="none" aria-hidden="true"><rect x="9" y="15" width="32" height="20" rx="2" stroke="#9aa09d" stroke-width="1.8"/><rect x="18" y="21" width="14" height="8" stroke="#9aa09d" stroke-width="1.8"/></svg>`;
+const SVG_MC=`<svg viewBox="0 0 50 50" fill="none" aria-hidden="true"><rect x="16" y="14" width="18" height="28" rx="2" stroke="#FF6B00" stroke-width="1.8" opacity=".5"/><path d="M25 14V5" stroke="#FF6B00" stroke-width="1.8" opacity=".5"/></svg>`;
+const SVG_RMH=`<svg viewBox="0 0 50 50" fill="none" aria-hidden="true"><rect x="9" y="15" width="32" height="20" rx="4" stroke="#FF6B00" stroke-width="1.8" opacity=".5"/><rect x="18" y="21" width="14" height="8" rx="2" stroke="#FF6B00" stroke-width="1.8" opacity=".5"/></svg>`;
 
 const PAG_SIZE = 40;
 const TOL_EA = 0.3;  // tolerancia en mm para espesor y ancho
@@ -747,9 +812,8 @@ let pagMostrados = 0;
 let ultimoFocus = null;
 let tFiltro, tToast;
 
-function arriba(){ window.scrollTo({top: 0, behavior: 'instant'}); }
-
 const $ = id => document.getElementById(id);
+function arriba(){ window.scrollTo({top: 0, behavior: 'instant'}); }
 function norm(t){ return String(t||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,''); }
 function esc(t){ return String(t).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function jsArg(t){ return esc(JSON.stringify(t)); }
@@ -782,6 +846,7 @@ function mostrarPagina(id){
       if(n === id) b.setAttribute('aria-current','page'); else b.removeAttribute('aria-current');
     });
   });
+  cerrarMenus();
   cerrarFiltros();
 }
 function irAInicio(seccion){
@@ -792,14 +857,17 @@ function irAInicio(seccion){
 }
 function irANosotros(){ mostrarPagina('nosotros'); setHash('nosotros'); arriba(); }
 // Sin argumentos conserva los filtros que había; con categoría, marca,
-// medida o búsqueda arranca de cero con ese filtro.
+// línea, medida o búsqueda arranca de cero con ese filtro. Categorías,
+// marcas y medidas son de carbones, así que fijan la línea MONCAR.
 function irAProductos(cat, marca, opts){
   opts = opts || {};
   mostrarPagina('productos');
-  if(cat || marca || opts.medida || opts.q != null){
+  if(cat || marca || opts.medida || opts.q != null || opts.linea != null){
     resetFiltros();
-    if(cat) marcarCheck('f-cats', cat);
-    if(marca) marcarCheck('f-marcas', marca);
+    if(cat || marca || opts.medida) setLineaVal('MONCAR');
+    if(opts.linea != null) setLineaVal(opts.linea);
+    if(cat) marcarCheck('sb-cats', cat);
+    if(marca) marcarCheck('sb-marcas', marca);
     if(opts.medida){
       $('m-esp').value  = opts.medida.esp  ? fmtMm(opts.medida.esp)  : '';
       $('m-anch').value = opts.medida.anch ? fmtMm(opts.medida.anch) : '';
@@ -812,15 +880,17 @@ function irAProductos(cat, marca, opts){
   if(cat) setHash('productos/cat/'+encodeURIComponent(cat));
   else if(marca) setHash('productos/marca/'+encodeURIComponent(marca));
   else if(opts.medida) setHash('productos/medidas/'+[opts.medida.esp,opts.medida.anch,opts.medida.larg].map(v => v || '').join('x'));
+  else if(opts.linea) setHash('productos/linea/'+opts.linea);
   else setHash('productos');
 }
 function irACat(c){ irAProductos(c, null); }
 function irAMarca(m){ irAProductos(null, m); }
+function irALinea(l){ irAProductos(null, null, {linea: l}); }
 function marcarCheck(cont, val){
   const cb = [...document.querySelectorAll('#'+cont+' input')].find(i => i.value === val);
   if(!cb) return;
   cb.checked = true;
-  if(cb.closest('#f-marcas-mas')) mostrarTodasMarcas(true);
+  if(cb.closest('#sb-marcas-mas')) mostrarTodasMarcas(true);
 }
 function aplicarHash(){
   const h = location.hash.slice(1);
@@ -831,11 +901,39 @@ function aplicarHash(){
   if(m){ irAProductos(decodeURIComponent(m[1]), null); return; }
   m = h.match(/^productos\/marca\/(.+)$/);
   if(m){ irAProductos(null, decodeURIComponent(m[1])); return; }
+  m = h.match(/^productos\/linea\/(MONCAR|RMH)$/);
+  if(m){ irALinea(m[1]); return; }
   m = h.match(/^productos\/medidas\/([\d.]*)x([\d.]*)x([\d.]*)$/);
   if(m){ irAProductos(null, null, {medida:{esp:parseMm(m[1]), anch:parseMm(m[2]), larg:parseMm(m[3])}}); return; }
   irAInicio();
 }
 window.addEventListener('hashchange', () => { if(hashPropio){ hashPropio = false; return; } aplicarHash(); });
+
+// ---------- Menú "Productos" (hover en la compu, toque en el celular) ----------
+const conMouse = window.matchMedia('(hover: hover) and (pointer: fine)');
+function clickProductos(btn){
+  const dd = btn.closest('.dd');
+  if(conMouse.matches){ irAProductos(); return; }
+  const abrir = !dd.classList.contains('open');
+  cerrarMenus();
+  dd.classList.toggle('open', abrir);
+  btn.setAttribute('aria-expanded', abrir);
+}
+function elegirLineaMenu(btn, linea){
+  const dd = btn.closest('.dd');
+  cerrarMenus();
+  dd.classList.add('cerrar');  // que no quede abierto por el hover hasta que salga el mouse
+  if(document.activeElement) document.activeElement.blur();
+  irALinea(linea);
+}
+function cerrarMenus(){
+  document.querySelectorAll('.dd.open').forEach(d => {
+    d.classList.remove('open');
+    const b = d.querySelector('[aria-expanded]'); if(b) b.setAttribute('aria-expanded', 'false');
+  });
+}
+document.querySelectorAll('.dd').forEach(d => d.addEventListener('mouseleave', () => d.classList.remove('cerrar')));
+document.addEventListener('click', e => { if(!e.target.closest('.dd')) cerrarMenus(); });
 
 // ---------- Buscadores de la portada ----------
 function buscarHome(ev){ ev.preventDefault(); irAProductos(null, null, {q: $('h-q').value.trim()}); }
@@ -857,17 +955,20 @@ function leerMedida(){
 // Distancia entre la medida buscada y el producto (null = no coincide).
 // Acepta espesor y ancho invertidos, porque es fácil confundirlos al medir.
 function distanciaMedida(p, m){
-  if(m.esp || m.anch){
-    if(p.esp == null || p.anch == null) return null;
-  }
+  const conEA = m.esp || m.anch;
+  if(conEA && (p.esp == null || p.anch == null)) return null;
   const dist = (pe, pa) => {
     let d = 0;
     if(m.esp){ const x = Math.abs(pe - m.esp); if(x > TOL_EA) return null; d += x; }
     if(m.anch){ const x = Math.abs(pa - m.anch); if(x > TOL_EA) return null; d += x; }
     return d;
   };
-  let d = (m.esp || m.anch) ? dist(p.esp, p.anch) : 0;
-  if(m.esp || m.anch){ const d2 = dist(p.anch, p.esp); if(d == null || (d2 != null && d2 < d)) d = d2; }
+  let d = 0;
+  if(conEA){
+    d = dist(p.esp, p.anch);
+    const d2 = dist(p.anch, p.esp);
+    if(d == null || (d2 != null && d2 < d)) d = d2;
+  }
   if(d == null) return null;
   if(m.larg){
     if(p.larg == null) return null;
@@ -881,7 +982,7 @@ function filtrar(){
   const q = norm($('search').value).trim();
   const tokens = q.split(/\s+/).filter(Boolean);
   $('search-clear').hidden = !q;
-  const selCats = checks('f-cats'), selMarcas = checks('f-marcas');
+  const selCats = checks('sb-cats'), selMarcas = checks('sb-marcas');
   const pMin = parsePrecio($('precio-min').value) || 0;
   const pMax = parsePrecio($('precio-max').value) || Infinity;
   const term = $('fil-term').value;
@@ -923,15 +1024,14 @@ function renderChips(selCats, selMarcas, med, term, pMin, pMax, q){
   if(q) ch.push(chip('Búsqueda: '+$('search').value.trim(), 'limpiarBusqueda()'));
   if(med) ch.push(chip('Medidas: '+[med.esp, med.anch, med.larg].map(v => v ? fmtMm(v) : '—').join(' × ')+' mm', 'limpiarMedida()'));
   if(term) ch.push(chip('Terminal '+term, "$('fil-term').value='';filtrar()"));
-  selCats.forEach(c => ch.push(chip(catLabel(c), 'quitarCheck(\'f-cats\','+jsArg(c)+')')));
-  selMarcas.forEach(m => ch.push(chip(marcaLabel(m), 'quitarCheck(\'f-marcas\','+jsArg(m)+')')));
-  if(filtroLinea) ch.push(chip(filtroLinea === 'RMH' ? 'Interruptores (RMH)' : 'Carbones (MONCAR)', "setLineaVal('');filtrar()"));
+  selCats.forEach(c => ch.push(chip(catLabel(c), 'quitarCheck(\'sb-cats\','+jsArg(c)+')')));
+  selMarcas.forEach(m => ch.push(chip(marcaLabel(m), 'quitarCheck(\'sb-marcas\','+jsArg(m)+')')));
   if(pMin > 0 || pMax < Infinity) ch.push(chip('Precio', 'limpiarPrecio()'));
   if(ch.length > 1) ch.push('<button type="button" class="chip-all" onclick="limpiarFiltros()">Limpiar todo</button>');
   const el = $('chips');
   el.innerHTML = ch.join('');
   el.hidden = !ch.length;
-  const nf = selCats.length + selMarcas.length + (med ? 1 : 0) + (term ? 1 : 0) + (filtroLinea ? 1 : 0) + ((pMin > 0 || pMax < Infinity) ? 1 : 0);
+  const nf = selCats.length + selMarcas.length + (med ? 1 : 0) + (term ? 1 : 0) + ((pMin > 0 || pMax < Infinity) ? 1 : 0);
   $('f-count').textContent = nf;
   $('f-count').hidden = !nf;
 }
@@ -943,40 +1043,60 @@ function renderVacio(n, med){
   const consejo = med
     ? 'Revisá la medida o probá dejando el largo vacío (si el carbón está gastado mide menos).'
     : 'Probá sacando algún filtro o buscando con otras palabras.';
-  el.innerHTML = `<h3>No encontramos productos con esos filtros</h3>
+  el.innerHTML = `<h3>No encontramos productos</h3>
     <p>${consejo} Si no lo encontrás, mandanos una foto del carbón o de la máquina por WhatsApp y te decimos cuál es.</p>
     <div class="acts"><button type="button" class="btn btn-line" onclick="limpiarFiltros()">Limpiar filtros</button>
     <button type="button" class="btn btn-wa" onclick="abrirConsultaWA()"><i class="fa-brands fa-whatsapp" aria-hidden="true"></i> Consultar por WhatsApp</button></div>`;
 }
 function resetFiltros(){
-  document.querySelectorAll('#f-cats input,#f-marcas input').forEach(cb => cb.checked = false);
+  document.querySelectorAll('#sb-cats input,#sb-marcas input').forEach(cb => cb.checked = false);
   ['precio-min','precio-max','m-esp','m-anch','m-larg','search'].forEach(id => $(id).value = '');
   $('fil-term').value = '';
   setLineaVal('');
 }
-function limpiarFiltros(){ resetFiltros(); filtrar(); }
+function limpiarFiltros(){ const l = filtroLinea; resetFiltros(); setLineaVal(l); filtrar(); }
 function limpiarBusqueda(){ $('search').value = ''; filtrar(); $('search').focus(); }
 function limpiarPrecio(){ $('precio-min').value = ''; $('precio-max').value = ''; filtrar(); }
 function limpiarMedida(){ ['m-esp','m-anch','m-larg'].forEach(id => $(id).value = ''); filtrar(); }
 function quitarCheck(cont, v){ const cb = [...document.querySelectorAll('#'+cont+' input')].find(i => i.value === v); if(cb) cb.checked = false; filtrar(); }
-function setLinea(btn){ setLineaVal(btn.dataset.val); filtrar(); }
+function setLinea(btn){ setLineaVal(btn.dataset.val); filtrar(); setHash(btn.dataset.val ? 'productos/linea/'+btn.dataset.val : 'productos'); }
+// Cambia la línea y deja los filtros coherentes: los interruptores RMH no
+// tienen marca de máquina, medidas ni terminal (esas secciones se ocultan).
 function setLineaVal(v){
   filtroLinea = v;
-  document.querySelectorAll('#f-linea button').forEach(b => { const on = b.dataset.val === v; b.classList.toggle('active', on); b.setAttribute('aria-pressed', on); });
+  document.querySelectorAll('#lineas-tabs .lt').forEach(b => { const on = b.dataset.val === v; b.classList.toggle('active', on); b.setAttribute('aria-pressed', on); });
+  $('sidebar').classList.toggle('solo-rmh', v === 'RMH');
+  if(v === 'RMH'){
+    document.querySelectorAll('#sb-marcas input').forEach(cb => cb.checked = false);
+    ['m-esp','m-anch','m-larg'].forEach(id => $(id).value = '');
+    $('fil-term').value = '';
+  }
+  actualizarConteos();
+}
+// Cantidad por tipo de máquina según la línea elegida; oculta los vacíos.
+function actualizarConteos(){
+  const cnt = {};
+  PRODUCTOS.forEach(p => { if(!filtroLinea || p.linea === filtroLinea) cnt[p.cat] = (cnt[p.cat] || 0) + 1; });
+  document.querySelectorAll('#sb-cats .sb-check').forEach(l => {
+    const cb = l.querySelector('input'), n = cnt[cb.value] || 0;
+    l.querySelector('.sb-cnt').textContent = n;
+    if(!n) cb.checked = false;
+    l.hidden = !n;
+  });
 }
 function mostrarTodasMarcas(abrir){
-  const mas = $('f-marcas-mas'), btn = $('f-marcas-btn');
+  const mas = $('sb-marcas-mas'), btn = $('sb-marcas-btn');
   if(!mas) return;
   const ver = abrir === true ? true : mas.hidden;
   mas.hidden = !ver;
   btn.textContent = ver ? 'Ver menos marcas' : btn.dataset.txt;
   btn.setAttribute('aria-expanded', ver);
 }
-function abrirFiltros(){ ultimoFocus = document.activeElement; $('filtros').classList.add('open'); $('f-ov').hidden = false; document.body.classList.add('lock'); setTimeout(() => $('f-close').focus(), 50); }
+function abrirFiltros(){ ultimoFocus = document.activeElement; $('sidebar').classList.add('open'); $('sb-ov').hidden = false; document.body.classList.add('lock'); setTimeout(() => $('sb-close').focus(), 50); }
 function cerrarFiltros(){
-  const f = $('filtros');
+  const f = $('sidebar');
   if(!f || !f.classList.contains('open')) return;
-  f.classList.remove('open'); $('f-ov').hidden = true; document.body.classList.remove('lock');
+  f.classList.remove('open'); $('sb-ov').hidden = true; document.body.classList.remove('lock');
   if(ultimoFocus) ultimoFocus.focus();
 }
 
@@ -988,9 +1108,7 @@ function renderGridPage(){
   if(!wrap.hidden) $('cargar-mas-info').textContent = `Mostrando ${pagMostrados} de ${visiblesActuales.length}`;
 }
 function cargarMas(){ pagMostrados += PAG_SIZE; renderGridPage(); }
-function renderGrid(lista){
-  $('grid').innerHTML = lista.map(cardHTML).join('');
-}
+function renderGrid(lista){ $('grid').innerHTML = lista.map(cardHTML).join(''); }
 function cardHTML(r){
   const p = r.p, cod = jsArg(p.cod);
   const marca = marcaMaquina(p);
@@ -1001,23 +1119,21 @@ function cardHTML(r){
     ? `${fmtMm(p.esp)} × ${fmtMm(p.anch)}${p.larg != null ? ' × '+fmtMm(p.larg) : ''} mm`
     : '';
   let tagMed = '';
-  if(r.dist != null) tagMed = r.dist < 0.05 ? '<span class="tag tag-ok">Medida exacta</span>' : '<span class="tag">Medida aproximada</span>';
+  if(r.dist != null) tagMed = r.dist < 0.05 ? '<span class="tag tag-ok">Medida exacta</span>' : '<span class="tag">Medida aprox.</span>';
   const enCart = cart.find(c => c.cod === p.cod);
   return `<article class="card">
     <div class="card-img">${img}</div>
     <div class="card-body">
-      <div class="card-tipo">${tipoProd(p)}</div>
+      <div class="card-badges"><span class="badge bl">${p.linea === 'RMH' ? 'Interruptor RMH' : 'Carbón MONCAR'}</span><span class="badge bc">${esc(catLabel(p.cat))}</span></div>
+      <div class="card-cod">${esc(p.cod)}</div>
       ${marca ? `<div class="card-marca">${esc(marca)}</div>` : ''}
       <div class="card-desc">${esc(p.desc)}</div>
-      ${dims ? `<div class="card-dims"><i class="fa-solid fa-ruler" aria-hidden="true"></i>${dims}${p.terminal != null ? ' · Terminal '+p.terminal : ''}</div>` : ''}
+      ${dims ? `<div class="card-dims"><i class="fa-solid fa-ruler" aria-hidden="true"></i>${dims}${p.terminal != null ? ' · Term. '+p.terminal : ''}</div>` : ''}
       ${tagMed}
-      <div class="card-cod">Cód. ${esc(p.cod)}</div>
       <div class="card-precio">${fmt(p.precio)}</div>
-      <div class="card-buy">
-        <div class="qty"><button type="button" aria-label="Restar uno" onclick="cambiarQtyCard(${cod},-1)">−</button><input type="number" inputmode="numeric" min="1" value="1" id="${qid(p.cod)}" aria-label="Cantidad de ${esc(p.cod)}"><button type="button" aria-label="Sumar uno" onclick="cambiarQtyCard(${cod},1)">+</button></div>
-        <button type="button" class="btn btn-primary" onclick="agregarAlCarrito(${cod})">Agregar</button>
-      </div>
-      ${enCart ? `<div class="card-encart"><i class="fa-solid fa-check" aria-hidden="true"></i> Tenés ${enCart.qty} en el pedido</div>` : ''}
+      <div class="card-qty"><button type="button" aria-label="Restar uno" onclick="cambiarQtyCard(${cod},-1)">−</button><input type="number" inputmode="numeric" min="1" value="1" id="${qid(p.cod)}" aria-label="Cantidad de ${esc(p.cod)}"><button type="button" aria-label="Sumar uno" onclick="cambiarQtyCard(${cod},1)">+</button></div>
+      <button type="button" class="btn-add" onclick="agregarAlCarrito(${cod})">Agregar</button>
+      ${enCart ? `<div class="card-encart"><i class="fa-solid fa-check" aria-hidden="true"></i> ${enCart.qty} en el pedido</div>` : ''}
     </div>
   </article>`;
 }
@@ -1049,7 +1165,8 @@ function actualizarContador(){
 function agregarAlCarrito(cod){
   const p = PRODUCTOS.find(x => x.cod === cod); if(!p) return;
   const inp = $(qid(cod));
-  const cant = inp ? Math.max(1, parseInt(inp.value) || 1) : 1;
+  // en el celular el selector de cantidad no se ve: suma de a 1
+  const cant = inp && inp.offsetParent ? Math.max(1, parseInt(inp.value) || 1) : 1;
   const ex = cart.find(c => c.cod === cod);
   if(ex) ex.qty += cant; else cart.push({cod: p.cod, desc: p.desc, precio: p.precio, qty: cant});
   guardarCart();
@@ -1074,15 +1191,16 @@ function renderCart(){
   el.innerHTML = cart.map(c => {
     const p = PRODUCTOS.find(x => x.cod === c.cod);
     const cod = jsArg(c.cod);
-    const tit = p ? (marcaMaquina(p) || tipoProd(p)) : c.cod;
+    const tit = p ? (marcaMaquina(p) || tipoProd(p)) : '';
     const img = p && p.img ? `<img src="imagenes/${esc(p.img)}" alt="">` : '';
     return `<div class="ci">
       <div class="ci-img">${img}</div>
       <div>
-        <div class="ci-t">${esc(tit)} <span class="ci-cod">· ${esc(c.cod)}</span></div>
+        <div class="ci-cod">${esc(c.cod)}</div>
+        ${tit ? `<div class="ci-t">${esc(tit)}</div>` : ''}
         <div class="ci-d">${esc(c.desc)}</div>
         <div class="ci-p">${fmt(precioActual(c))} c/u</div>
-        <div class="qty"><button type="button" aria-label="Restar uno" onclick="cambiarQty(${cod},-1)">−</button><span aria-label="Cantidad">${c.qty}</span><button type="button" aria-label="Sumar uno" onclick="cambiarQty(${cod},1)">+</button></div>
+        <div class="ci-qty"><button type="button" aria-label="Restar uno" onclick="cambiarQty(${cod},-1)">−</button><span aria-label="Cantidad">${c.qty}</span><button type="button" aria-label="Sumar uno" onclick="cambiarQty(${cod},1)">+</button></div>
       </div>
       <button type="button" class="btn-rm" aria-label="Quitar ${esc(c.cod)}" onclick="quitarItem(${cod})"><i class="fa-solid fa-trash-can" aria-hidden="true"></i></button>
     </div>`;
@@ -1147,7 +1265,7 @@ function confirmarPedido(ev){
   let primero = null;
   [['f-nombre', nombre], ['f-localidad', localidad]].forEach(([id, v]) => {
     $(id).classList.toggle('err', !v);
-    if(!v){ $(id).setAttribute('aria-invalid','true'); } else { $(id).removeAttribute('aria-invalid'); }
+    if(!v) $(id).setAttribute('aria-invalid','true'); else $(id).removeAttribute('aria-invalid');
     $(id+'-err').hidden = !!v;
     if(!v && !primero) primero = $(id);
   });
@@ -1177,11 +1295,13 @@ document.addEventListener('keydown', e => {
   if(e.key !== 'Escape') return;
   if(!$('fmodal').hidden) cerrarFormModal();
   else if($('cart').classList.contains('open')) cerrarCart();
+  else if(document.querySelector('.dd.open')) cerrarMenus();
   else cerrarFiltros();
 });
 
 actualizarContador();
 renderCart();
+actualizarConteos();
 if(location.hash) aplicarHash(); else { mostrarPagina('inicio'); filtrar(); }
 '''
 
@@ -1189,6 +1309,9 @@ if(location.hash) aplicarHash(); else { mostrarPagina('inicio'); filtrar(); }
 def generar_html(productos):
     cat_count = Counter(p['cat'] for p in productos)
     cats_orden = [c for c, _ in sorted(cat_count.items(), key=lambda x: -x[1])]
+    # En la portada, "por tipo de máquina" es de carbones: cuenta solo MONCAR
+    cat_count_mc = Counter(p['cat'] for p in productos if p['linea'] == 'MONCAR')
+    cats_mc = [c for c, _ in sorted(cat_count_mc.items(), key=lambda x: -x[1])]
 
     marca_count = Counter(
         p['marca'] for p in productos
@@ -1198,6 +1321,12 @@ def generar_html(productos):
     marcas_destacadas.sort(key=lambda x: -x[1])
 
     terms = sorted(set(p['terminal'] for p in productos if p['terminal'] is not None))
+    n_mc  = sum(1 for p in productos if p['linea'] == 'MONCAR')
+    n_rmh = sum(1 for p in productos if p['linea'] == 'RMH')
+
+    def foto_linea(linea):
+        p = next((p for p in productos if p['linea'] == linea and p['img']), None)
+        return f'<img src="imagenes/{_html.escape(p["img"])}" alt="" loading="lazy">' if p else ''
 
     def e(t):
         return _html.escape(str(t), quote=True)
@@ -1214,13 +1343,13 @@ def generar_html(productos):
 
     def cat_cards():
         cards = []
-        for cat in cats_orden:
+        for cat in cats_mc:
             cfg = CAT_CONFIG.get(cat, CAT_CONFIG['Otros'])
             cards.append(
                 f'<button type="button" class="cat-card" onclick="irACat({js_arg(cat)})">'
                 f'<span class="cat-icon" aria-hidden="true">{cfg["icon"]}</span>'
                 f'<span class="cat-name">{e(cat_lbl(cat))}</span>'
-                f'<span class="cat-count">{cat_count[cat]} productos</span>'
+                f'<span class="cat-count">{cat_count_mc[cat]} carbones</span>'
                 f'</button>'
             )
         return '\n'.join(cards)
@@ -1229,8 +1358,7 @@ def generar_html(productos):
         cards = []
         for m, cnt in marcas_destacadas:
             cards.append(
-                f'<button type="button" class="marca-card" style="--mc:{MARCAS_CONFIG[m]["bg"]}" '
-                f'onclick="irAMarca({js_arg(m)})">'
+                f'<button type="button" class="marca-card" onclick="irAMarca({js_arg(m)})">'
                 f'<span class="marca-name">{e(marca_lbl(m))}</span>'
                 f'<span class="marca-sub">{cnt} carbones</span>'
                 f'</button>'
@@ -1238,8 +1366,8 @@ def generar_html(productos):
         return '\n'.join(cards)
 
     def check(valor, texto, cnt):
-        return (f'<label class="chk"><input type="checkbox" value="{e(valor)}" onchange="filtrar()">'
-                f'<span>{e(texto)}</span><span class="n">{cnt}</span></label>')
+        return (f'<label class="sb-check"><input type="checkbox" value="{e(valor)}" onchange="filtrar()">'
+                f'<span>{e(texto)}</span><span class="sb-cnt">{cnt}</span></label>')
 
     def filtro_cats():
         return '\n'.join(check(c, cat_lbl(c), cat_count[c]) for c in cats_orden)
@@ -1249,11 +1377,11 @@ def generar_html(productos):
         primeras = '\n'.join(check(m, marca_lbl(m), c) for m, c in orden[:10])
         resto = orden[10:]
         if not resto:
-            return f'<div id="f-marcas">{primeras}</div>'
+            return f'<div id="sb-marcas">{primeras}</div>'
         mas = '\n'.join(check(m, marca_lbl(m), c) for m, c in resto)
         txt = f'Ver todas las marcas ({len(orden)})'
-        return (f'<div id="f-marcas">{primeras}<div id="f-marcas-mas" hidden>{mas}</div></div>'
-                f'<button type="button" class="f-more" id="f-marcas-btn" data-txt="{e(txt)}" '
+        return (f'<div id="sb-marcas">{primeras}<div id="sb-marcas-mas" hidden>{mas}</div></div>'
+                f'<button type="button" class="sb-more" id="sb-marcas-btn" data-txt="{e(txt)}" '
                 f'aria-expanded="false" onclick="mostrarTodasMarcas()">{e(txt)}</button>')
 
     def opt(vals):
@@ -1266,8 +1394,19 @@ def generar_html(productos):
              .replace('__MARCA_LABEL__', json.dumps(MARCA_LABEL, ensure_ascii=False)))
 
     n_prod = len(productos)
-    n_marcas = len(marca_count)
     wa_ico = '<i class="fa-brands fa-whatsapp" aria-hidden="true"></i>'
+
+    # Menú "Productos": se usa en la barra de la compu y en las pestañas del celular
+    def menu_productos():
+        return f'''<div class="dd">
+        <button type="button" class="nav-link" data-nav="productos" aria-haspopup="true" aria-expanded="false" onclick="clickProductos(this)">Productos <i class="fa-solid fa-chevron-down" aria-hidden="true"></i></button>
+        <div class="dd-menu">
+          <button type="button" class="dd-item" onclick="elegirLineaMenu(this,'MONCAR')"><span class="dd-ico"><i class="fa-solid fa-bolt" aria-hidden="true"></i></span><span><strong>Carbones eléctricos</strong><span>Línea MONCAR · {n_mc} productos</span></span></button>
+          <button type="button" class="dd-item" onclick="elegirLineaMenu(this,'RMH')"><span class="dd-ico"><i class="fa-solid fa-toggle-on" aria-hidden="true"></i></span><span><strong>Interruptores eléctricos</strong><span>Línea RMH · {n_rmh} productos</span></span></button>
+          <div class="dd-sep"></div>
+          <button type="button" class="dd-item" onclick="elegirLineaMenu(this,'')"><span class="dd-ico"><i class="fa-solid fa-table-cells" aria-hidden="true"></i></span><span><strong>Todos los productos</strong><span>Carbones e interruptores · {n_prod}</span></span></button>
+        </div>
+      </div>'''
 
     return f'''<!DOCTYPE html>
 <html lang="es">
@@ -1276,10 +1415,10 @@ def generar_html(productos):
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>MONCAR RMH — Carbones e interruptores para herramientas</title>
 <meta name="description" content="Carbones eléctricos MONCAR e interruptores RMH para herramientas y electrodomésticos. Buscá por marca, tipo de máquina o medidas. Envíos a todo el país.">
-<meta name="theme-color" content="#0f0e12">
+<meta name="theme-color" content="#000000">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <style>{_CSS}</style>
 </head>
@@ -1287,21 +1426,21 @@ def generar_html(productos):
 
 <header class="top">
   <div class="wrap top-in">
-    <button type="button" class="logo" onclick="irAInicio()" aria-label="MONCAR RMH, ir al inicio">MONCAR <span>RMH</span></button>
+    <button type="button" class="nav-logo" onclick="irAInicio()" aria-label="MONCAR RMH, ir al inicio">MONCAR<span> RMH</span></button>
     <nav class="nav" aria-label="Principal">
-      <button type="button" class="nav-btn active" data-nav="inicio" onclick="irAInicio()">Inicio</button>
-      <button type="button" class="nav-btn" data-nav="productos" onclick="irAProductos()">Productos</button>
-      <button type="button" class="nav-btn" data-nav="nosotros" onclick="irANosotros()">Nosotros</button>
+      <button type="button" class="nav-link active" data-nav="inicio" onclick="irAInicio()">Inicio</button>
+      {menu_productos()}
+      <button type="button" class="nav-link" data-nav="nosotros" onclick="irANosotros()">Nosotros</button>
     </nav>
-    <div class="top-acts">
-      <button type="button" class="btn btn-line" onclick="abrirConsultaWA()" aria-label="Consultar por WhatsApp"><i class="fa-brands fa-whatsapp wa-ico" aria-hidden="true"></i><span class="hide-sm">WhatsApp</span></button>
-      <button type="button" class="btn btn-primary" onclick="abrirCart()" aria-label="Ver mi pedido"><i class="fa-solid fa-cart-shopping" aria-hidden="true"></i><span class="hide-sm">Mi pedido</span><span class="cart-n">0</span></button>
+    <div class="nav-right">
+      <button type="button" class="btn btn-wa-nav" onclick="abrirConsultaWA()" aria-label="Consultar por WhatsApp">{wa_ico}<span class="hide-sm">WhatsApp</span></button>
+      <button type="button" class="btn btn-primary" onclick="abrirCart()" aria-label="Ver mi pedido"><i class="fa-solid fa-cart-shopping" aria-hidden="true"></i><span class="hide-sm">Pedido</span><span class="cart-n">0</span></button>
     </div>
   </div>
   <nav class="tabs" aria-label="Secciones">
-    <button type="button" class="nav-btn active" data-nav="inicio" onclick="irAInicio()">Inicio</button>
-    <button type="button" class="nav-btn" data-nav="productos" onclick="irAProductos()">Productos</button>
-    <button type="button" class="nav-btn" data-nav="nosotros" onclick="irANosotros()">Nosotros</button>
+    <button type="button" class="nav-link active" data-nav="inicio" onclick="irAInicio()">Inicio</button>
+    {menu_productos()}
+    <button type="button" class="nav-link" data-nav="nosotros" onclick="irANosotros()">Nosotros</button>
   </nav>
 </header>
 
@@ -1310,60 +1449,66 @@ def generar_html(productos):
 <div id="page-inicio">
   <section class="hero">
     <div class="wrap hero-in">
-      <div>
-        <p class="hero-kicker">Carbones MONCAR · Interruptores RMH</p>
-        <h1>Repuestos eléctricos para <em>herramientas</em></h1>
-        <p class="hero-p">Carbones e interruptores para las principales marcas de herramientas y electrodomésticos. Para ferreterías, casas de repuestos y talleres. Envíos a todo el país.</p>
-        <div class="hero-btns">
-          <button type="button" class="btn btn-primary btn-lg" onclick="irAProductos()">Ver catálogo completo</button>
-          <button type="button" class="btn btn-ghost-dark btn-lg" onclick="abrirConsultaWA()">{wa_ico} Consultar por WhatsApp</button>
+      <div class="hero-logo"><div class="hero-logo-frame"><img src="logo-hero.png" alt="MONCAR RMH"></div></div>
+      <div class="paths-wrap">
+        <h1 class="paths-t">¿Qué repuesto <em>buscás</em>?</h1>
+        <p class="paths-sub">Carbones MONCAR e interruptores RMH. Elegí cómo buscarlo:</p>
+        <div class="paths">
+          <button type="button" class="path" onclick="irAInicio('sec-marcas')"><span class="path-ico"><i class="fa-solid fa-tag" aria-hidden="true"></i></span><span class="path-tx"><strong>Por marca de la máquina</strong><span>Bosch, Makita, DeWalt, Black &amp; Decker…</span></span><i class="fa-solid fa-chevron-right path-arrow" aria-hidden="true"></i></button>
+          <button type="button" class="path" onclick="irAInicio('sec-cats')"><span class="path-ico"><i class="fa-solid fa-screwdriver-wrench" aria-hidden="true"></i></span><span class="path-tx"><strong>Por tipo de máquina</strong><span>Amoladora, taladro, sierra, lavarropas…</span></span><i class="fa-solid fa-chevron-right path-arrow" aria-hidden="true"></i></button>
+          <button type="button" class="path" onclick="irAInicio('sec-medidas')"><span class="path-ico"><i class="fa-solid fa-ruler-combined" aria-hidden="true"></i></span><span class="path-tx"><strong>Por medidas del carbón</strong><span>Espesor × ancho × largo, en milímetros</span></span><i class="fa-solid fa-chevron-right path-arrow" aria-hidden="true"></i></button>
+          <form class="hero-search" role="search" onsubmit="buscarHome(event)">
+            <label for="h-q">¿Sabés el modelo de la máquina?</label>
+            <div class="hs-row"><input id="h-q" class="inp" type="search" placeholder="Ej: amoladora Bosch GWS 7" autocomplete="off"><button type="submit" class="btn btn-primary">Buscar</button></div>
+          </form>
         </div>
       </div>
-      <div class="paths">
-        <p class="paths-t">¿Cómo querés buscar tu repuesto?</p>
-        <button type="button" class="path" onclick="irAInicio('sec-marcas')"><span class="path-ico"><i class="fa-solid fa-tag" aria-hidden="true"></i></span><span class="path-tx"><strong>Por marca de la máquina</strong><span>Bosch, Makita, DeWalt, Black &amp; Decker…</span></span><i class="fa-solid fa-chevron-right path-arrow" aria-hidden="true"></i></button>
-        <button type="button" class="path" onclick="irAInicio('sec-cats')"><span class="path-ico"><i class="fa-solid fa-screwdriver-wrench" aria-hidden="true"></i></span><span class="path-tx"><strong>Por tipo de máquina</strong><span>Amoladora, taladro, sierra, lavarropas…</span></span><i class="fa-solid fa-chevron-right path-arrow" aria-hidden="true"></i></button>
-        <button type="button" class="path" onclick="irAInicio('sec-medidas')"><span class="path-ico"><i class="fa-solid fa-ruler-combined" aria-hidden="true"></i></span><span class="path-tx"><strong>Por medidas del carbón</strong><span>Espesor × ancho × largo, en milímetros</span></span><i class="fa-solid fa-chevron-right path-arrow" aria-hidden="true"></i></button>
-        <form class="hero-search" role="search" onsubmit="buscarHome(event)">
-          <label for="h-q">¿Sabés el modelo de la máquina?</label>
-          <div class="hs-row"><input id="h-q" class="inp" type="search" placeholder="Ej: amoladora Bosch GWS 7" autocomplete="off"><button type="submit" class="btn btn-primary">Buscar</button></div>
-        </form>
+    </div>
+  </section>
+
+  <section class="sec" id="sec-lineas">
+    <div class="wrap">
+      <div class="sec-head"><div><h2>Nuestras líneas</h2><p>MONCAR RMH trabaja dos líneas de repuestos eléctricos para herramientas.</p></div></div>
+      <div class="lineas">
+        <button type="button" class="linea-card" onclick="irALinea('MONCAR')">
+          <span><span class="lc-marca">MONCAR</span><span class="lc-tipo">Carbones eléctricos</span>
+          <span class="lc-desc">{n_mc} modelos para herramientas eléctricas y electrodomésticos de las principales marcas.</span>
+          <span class="lc-cta">Ver carbones <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></span></span>
+          <span class="lc-img">{foto_linea('MONCAR')}</span>
+        </button>
+        <button type="button" class="linea-card" onclick="irALinea('RMH')">
+          <span><span class="lc-marca">RMH</span><span class="lc-tipo">Interruptores eléctricos</span>
+          <span class="lc-desc">{n_rmh} modelos de interruptores (llaves) para amoladoras, taladros, sierras y más.</span>
+          <span class="lc-cta">Ver interruptores <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></span></span>
+          <span class="lc-img">{foto_linea('RMH')}</span>
+        </button>
       </div>
     </div>
   </section>
 
-  <section class="stats" aria-label="Por qué elegirnos">
-    <div class="wrap stats-in">
-      <div class="stat"><i class="fa-solid fa-boxes-stacked" aria-hidden="true"></i><div><strong>{n_prod} productos</strong><span>Carbones e interruptores</span></div></div>
-      <div class="stat"><i class="fa-solid fa-tags" aria-hidden="true"></i><div><strong>{n_marcas} marcas</strong><span>Herramientas y electrodomésticos</span></div></div>
-      <div class="stat"><i class="fa-solid fa-truck-fast" aria-hidden="true"></i><div><strong>Envíos a todo el país</strong><span>Despachamos a cualquier provincia</span></div></div>
-      <div class="stat"><i class="fa-solid fa-headset" aria-hidden="true"></i><div><strong>Atención personalizada</strong><span>Te ayudamos a encontrar el repuesto</span></div></div>
-    </div>
-  </section>
-
-  <section class="sec" id="sec-marcas">
+  <section class="sec sec-alt" id="sec-marcas">
     <div class="wrap">
       <div class="sec-head">
-        <div><p class="sec-num">01 — Por marca</p><h2>Buscá por marca de la máquina</h2><p class="sec-sub">Elegí la marca y te mostramos todos los carbones compatibles.</p></div>
-        <button type="button" class="link-more" onclick="irAProductos()">Ver todas las marcas</button>
+        <div><span class="sec-tag"><i class="fa-solid fa-bolt" aria-hidden="true"></i> Línea MONCAR · Carbones</span><h2>Carbones por marca</h2><p>Elegí la marca de la máquina y te mostramos los carbones compatibles.</p></div>
+        <button type="button" class="link-more" onclick="irALinea('MONCAR')">Ver todos los carbones</button>
       </div>
-      <div class="ruled marca-grid">{marca_cards()}</div>
+      <div class="marca-grid">{marca_cards()}</div>
     </div>
   </section>
 
   <section class="sec" id="sec-cats">
     <div class="wrap">
       <div class="sec-head">
-        <div><p class="sec-num">02 — Por máquina</p><h2>Buscá por tipo de máquina</h2><p class="sec-sub">Carbones e interruptores separados por el tipo de herramienta o electrodoméstico.</p></div>
+        <div><span class="sec-tag"><i class="fa-solid fa-bolt" aria-hidden="true"></i> Línea MONCAR · Carbones</span><h2>Carbones por tipo de máquina</h2><p>Encontrá rápido el carbón para tu herramienta o electrodoméstico.</p></div>
       </div>
-      <div class="ruled cat-grid">{cat_cards()}</div>
+      <div class="cat-grid">{cat_cards()}</div>
     </div>
   </section>
 
-  <section class="sec" id="sec-medidas">
+  <section class="sec sec-alt" id="sec-medidas">
     <div class="wrap">
       <div class="sec-head">
-        <div><p class="sec-num">03 — Por medidas</p><h2>Buscá por medidas del carbón</h2><p class="sec-sub">¿Tenés el carbón viejo en la mano? Medilo y encontrá el equivalente.</p></div>
+        <div><span class="sec-tag"><i class="fa-solid fa-bolt" aria-hidden="true"></i> Línea MONCAR · Carbones</span><h2>Carbones por medidas</h2><p>¿Tenés el carbón viejo en la mano? Medilo y encontrá el equivalente.</p></div>
       </div>
       <div class="med-box">
         <div class="med-fig">{_SVG_MEDIDAS}</div>
@@ -1383,7 +1528,7 @@ def generar_html(productos):
 
   <section class="ayuda">
     <div class="wrap ayuda-in">
-      <div><h2>¿No sabés cuál es el repuesto?</h2><p>Mandanos una foto del carbón o de la chapa de la máquina por WhatsApp y te decimos cuál te sirve.</p></div>
+      <div><h2>¿No sabés cuál es el repuesto?</h2><p>Mandanos una foto del carbón, del interruptor o de la chapa de la máquina por WhatsApp y te decimos cuál te sirve.</p></div>
       <button type="button" class="btn btn-wa btn-lg" onclick="abrirConsultaWA()">{wa_ico} Consultar por WhatsApp</button>
     </div>
   </section>
@@ -1391,70 +1536,62 @@ def generar_html(productos):
 
 <!-- ===== PRODUCTOS ===== -->
 <div id="page-productos" hidden>
-  <div class="prod-head">
-    <div class="wrap prod-head-in">
-      <h1>Catálogo de productos</h1>
-      <p>Filtrá por tipo de máquina, marca o medidas. Precios de lista.</p>
-      <div class="search" role="search">
-        <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
-        <label for="search" class="sr-only">Buscar productos</label>
-        <input id="search" class="inp" type="search" placeholder="Buscá por máquina, marca o modelo (ej: taladro Bosch)" oninput="filtrarPronto()" autocomplete="off">
-        <button type="button" class="search-clear" id="search-clear" onclick="limpiarBusqueda()" aria-label="Borrar búsqueda" hidden><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
-      </div>
-    </div>
-  </div>
-
-  <div class="wrap prod-layout">
-    <div class="f-ov" id="f-ov" onclick="cerrarFiltros()" hidden></div>
-    <aside class="filtros" id="filtros" aria-label="Filtros">
-      <div class="f-head"><strong>Filtros</strong><button type="button" class="x" id="f-close" onclick="cerrarFiltros()" aria-label="Cerrar filtros"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button></div>
-      <div class="f-body">
-        <div class="f-sec">
-          <h2 class="f-tit"><i class="fa-solid fa-screwdriver-wrench" aria-hidden="true"></i> Tipo de máquina</h2>
-          <div id="f-cats">{filtro_cats()}</div>
-        </div>
-        <div class="f-sec">
-          <h2 class="f-tit"><i class="fa-solid fa-tag" aria-hidden="true"></i> Marca</h2>
-          {filtro_marcas()}
-        </div>
-        <div class="f-sec">
-          <h2 class="f-tit"><i class="fa-solid fa-ruler-combined" aria-hidden="true"></i> Medidas (mm)</h2>
-          <div class="f-med">
+  <div class="prod-layout">
+    <div class="sb-ov" id="sb-ov" onclick="cerrarFiltros()" hidden></div>
+    <aside class="sidebar" id="sidebar" aria-label="Filtros">
+      <div class="sb-head">Filtros<button type="button" class="x" id="sb-close" onclick="cerrarFiltros()" aria-label="Cerrar filtros"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button></div>
+      <div class="sb-body">
+        <div class="sb-section fs-carbon">
+          <h2 class="sb-title"><i class="fa-solid fa-ruler-combined" aria-hidden="true"></i> Medidas del carbón (mm)</h2>
+          <div class="sb-med">
             <div><label for="m-esp">Espesor</label><input id="m-esp" class="inp" inputmode="decimal" autocomplete="off" oninput="filtrarPronto()"></div>
             <div><label for="m-anch">Ancho</label><input id="m-anch" class="inp" inputmode="decimal" autocomplete="off" oninput="filtrarPronto()"></div>
             <div><label for="m-larg">Largo</label><input id="m-larg" class="inp" inputmode="decimal" autocomplete="off" oninput="filtrarPronto()"></div>
           </div>
-          <p class="f-help">Sirven medidas aproximadas. El largo es opcional.</p>
-          <label for="fil-term" class="f-lbl">Terminal</label>
-          <select id="fil-term" class="inp" onchange="filtrar()"><option value="">Todos</option>{opt(terms)}</select>
+          <p class="sb-help">Sirven medidas aproximadas. El largo es opcional.</p>
+          <label for="fil-term" class="sb-lbl">Terminal</label>
+          <select id="fil-term" class="inp sb-select" onchange="filtrar()"><option value="">Todos</option>{opt(terms)}</select>
         </div>
-        <div class="f-sec">
-          <h2 class="f-tit"><i class="fa-solid fa-box" aria-hidden="true"></i> Producto</h2>
-          <div class="seg" id="f-linea">
-            <button type="button" class="active" data-val="" aria-pressed="true" onclick="setLinea(this)">Todos</button>
-            <button type="button" data-val="MONCAR" aria-pressed="false" onclick="setLinea(this)">Carbones (MONCAR)</button>
-            <button type="button" data-val="RMH" aria-pressed="false" onclick="setLinea(this)">Interruptores (RMH)</button>
+        <div class="sb-section">
+          <h2 class="sb-title"><i class="fa-solid fa-screwdriver-wrench" aria-hidden="true"></i> Tipo de máquina</h2>
+          <div id="sb-cats">{filtro_cats()}</div>
+        </div>
+        <div class="sb-section fs-carbon">
+          <h2 class="sb-title"><i class="fa-solid fa-tag" aria-hidden="true"></i> Marca de la máquina</h2>
+          {filtro_marcas()}
+        </div>
+        <div class="sb-section">
+          <h2 class="sb-title"><i class="fa-solid fa-dollar-sign" aria-hidden="true"></i> Precio</h2>
+          <div class="sb-range">
+            <input id="precio-min" class="inp" inputmode="numeric" placeholder="Mín" aria-label="Precio mínimo" oninput="filtrarPronto()">
+            <span>—</span>
+            <input id="precio-max" class="inp" inputmode="numeric" placeholder="Máx" aria-label="Precio máximo" oninput="filtrarPronto()">
           </div>
         </div>
-        <div class="f-sec">
-          <h2 class="f-tit"><i class="fa-solid fa-dollar-sign" aria-hidden="true"></i> Precio</h2>
-          <div class="f-range">
-            <input id="precio-min" class="inp" inputmode="numeric" placeholder="Mínimo" aria-label="Precio mínimo" oninput="filtrarPronto()">
-            <span>a</span>
-            <input id="precio-max" class="inp" inputmode="numeric" placeholder="Máximo" aria-label="Precio máximo" oninput="filtrarPronto()">
-          </div>
-        </div>
-        <div class="f-sec f-clear-d"><button type="button" class="btn btn-line btn-block" onclick="limpiarFiltros()">Limpiar filtros</button></div>
+        <div class="sb-section sb-clear-d"><button type="button" class="btn btn-line btn-block" onclick="limpiarFiltros()">Limpiar filtros</button></div>
       </div>
-      <div class="f-foot">
+      <div class="sb-foot">
         <button type="button" class="btn btn-line" onclick="limpiarFiltros()">Limpiar</button>
         <button type="button" class="btn btn-primary" id="btn-ver-res" onclick="cerrarFiltros()">Ver productos</button>
       </div>
     </aside>
 
     <div class="prod-main">
+      <div class="prod-topbar">
+        <button type="button" class="btn btn-primary btn-filtros" onclick="abrirFiltros()"><i class="fa-solid fa-sliders" aria-hidden="true"></i> Filtros <span class="f-count" id="f-count" hidden></span></button>
+        <div class="search" role="search">
+          <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+          <label for="search" class="sr-only">Buscar productos</label>
+          <input id="search" class="inp" type="search" placeholder="Buscá por máquina, marca o modelo" oninput="filtrarPronto()" autocomplete="off">
+          <button type="button" class="search-clear" id="search-clear" onclick="limpiarBusqueda()" aria-label="Borrar búsqueda" hidden><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+        </div>
+      </div>
+      <div class="lineas-tabs" id="lineas-tabs" role="group" aria-label="Línea de productos">
+        <button type="button" class="lt active" data-val="" aria-pressed="true" onclick="setLinea(this)"><span class="lt-ico"><i class="fa-solid fa-table-cells" aria-hidden="true"></i></span><span><strong>Todos</strong><span>{n_prod} productos</span></span></button>
+        <button type="button" class="lt" data-val="MONCAR" aria-pressed="false" onclick="setLinea(this)"><span class="lt-ico"><i class="fa-solid fa-bolt" aria-hidden="true"></i></span><span><strong>Carbones</strong><span>Línea MONCAR</span></span></button>
+        <button type="button" class="lt" data-val="RMH" aria-pressed="false" onclick="setLinea(this)"><span class="lt-ico"><i class="fa-solid fa-toggle-on" aria-hidden="true"></i></span><span><strong>Interruptores</strong><span>Línea RMH</span></span></button>
+      </div>
       <div class="toolbar">
-        <button type="button" class="btn btn-line btn-filtros" onclick="abrirFiltros()"><i class="fa-solid fa-sliders" aria-hidden="true"></i> Filtros <span class="f-count" id="f-count" hidden></span></button>
         <p class="res-n" id="results-info" aria-live="polite"></p>
         <label class="orden"><span>Ordenar:</span>
           <select id="orden" class="inp" onchange="filtrar()" aria-label="Ordenar productos">
@@ -1465,11 +1602,13 @@ def generar_html(productos):
         </label>
       </div>
       <div class="chips" id="chips" hidden></div>
-      <div class="grid" id="grid"></div>
-      <div class="vacio" id="no-results" hidden></div>
-      <div class="mas" id="cargar-mas-wrap" hidden>
-        <p id="cargar-mas-info"></p>
-        <button type="button" class="btn btn-line" onclick="cargarMas()">Mostrar más productos</button>
+      <div class="grid-wrap">
+        <div class="grid" id="grid"></div>
+        <div class="vacio" id="no-results" hidden></div>
+        <div class="mas" id="cargar-mas-wrap" hidden>
+          <p id="cargar-mas-info"></p>
+          <button type="button" class="btn btn-line" onclick="cargarMas()">Mostrar más productos</button>
+        </div>
       </div>
     </div>
   </div>
@@ -1478,19 +1617,18 @@ def generar_html(productos):
 <!-- ===== NOSOTROS ===== -->
 <div id="page-nosotros" hidden>
   <section class="sec">
-    <div class="wrap nos">
-      <div>
-        <p class="sec-num">Nosotros</p>
-        <h1>Repuestos eléctricos para herramientas, desde una empresa familiar</h1>
-        <p class="nos-lead">Carbones eléctricos MONCAR e interruptores RMH, compatibles con las principales marcas de herramientas y electrodomésticos del mercado.</p>
-        <div class="ruled nos-list">
-          <div class="nos-item"><i class="fa-solid fa-bolt" aria-hidden="true"></i><h3>Experiencia en el rubro</h3><p>Años de trayectoria en repuestos eléctricos para herramientas profesionales y de uso doméstico.</p></div>
-          <div class="nos-item"><i class="fa-solid fa-tags" aria-hidden="true"></i><h3>Multimarca</h3><p>Bosch, DeWalt, Makita, Black &amp; Decker, Metabo, Hitachi, Stanley, Gamma, Milwaukee y muchas más.</p></div>
-          <div class="nos-item"><i class="fa-solid fa-truck-fast" aria-hidden="true"></i><h3>Envíos a todo el país</h3><p>Despachamos a cualquier punto del país. Consultá por tu zona y los tiempos de entrega.</p></div>
-          <div class="nos-item"><i class="fa-solid fa-headset" aria-hidden="true"></i><h3>Atención personalizada</h3><p>Te ayudamos a encontrar el repuesto exacto para tu herramienta. Consultá sin compromiso.</p></div>
-        </div>
+    <div class="wrap nosotros-wrap">
+      <div class="nos-hero">
+        <h1>Sobre <span>MONCAR RMH</span></h1>
+        <p>Empresa familiar especializada en repuestos eléctricos para herramientas, con dos líneas: carbones eléctricos MONCAR e interruptores RMH, compatibles con las principales marcas del mercado.</p>
       </div>
-      <div class="contacto">
+      <div class="nos-cards">
+        <div class="n-card"><div class="n-icon"><i class="fa-solid fa-bolt" aria-hidden="true"></i></div><h3>Experiencia en el rubro</h3><p>Años de trayectoria en la venta de repuestos eléctricos para herramientas profesionales y de uso doméstico.</p></div>
+        <div class="n-card"><div class="n-icon"><i class="fa-solid fa-tags" aria-hidden="true"></i></div><h3>Multimarca</h3><p>Compatible con Bosch, DeWalt, Makita, Black &amp; Decker, Metabo, Hitachi, Stanley, Gamma, Milwaukee y muchas más.</p></div>
+        <div class="n-card"><div class="n-icon"><i class="fa-solid fa-truck-fast" aria-hidden="true"></i></div><h3>Envíos a todo el país</h3><p>Despachamos a cualquier punto del país. Consultá por tu zona y los tiempos de entrega.</p></div>
+        <div class="n-card"><div class="n-icon"><i class="fa-solid fa-headset" aria-hidden="true"></i></div><h3>Atención personalizada</h3><p>Te ayudamos a encontrar el repuesto exacto para tu herramienta. Consultá sin compromiso por WhatsApp.</p></div>
+      </div>
+      <div class="contact-box">
         <h2>Contacto</h2>
         <a class="c-row" href="https://wa.me/5491136267009" target="_blank" rel="noopener"><span class="c-ico">{wa_ico}</span><span><span class="c-lbl">WhatsApp</span><span class="c-val">+54 9 11 3626-7009</span></span></a>
         <a class="c-row" href="mailto:contacto.carbonkey@gmail.com"><span class="c-ico"><i class="fa-solid fa-envelope" aria-hidden="true"></i></span><span><span class="c-lbl">Email</span><span class="c-val">contacto.carbonkey@gmail.com</span></span></a>
@@ -1502,28 +1640,28 @@ def generar_html(productos):
 </main>
 
 <footer>
-  <div class="wrap f-in">
+  <div class="wrap fi">
     <div>
-      <div class="f-brand">MONCAR <span>RMH</span></div>
-      <p>Carbones eléctricos e interruptores para herramientas. Envíos a todo el país.</p>
+      <div class="f-logo"><img src="logo-footer.png" alt="MONCAR RMH"><div class="fb">MONCAR<span> RMH</span></div></div>
+      <div class="fd">Carbones eléctricos MONCAR e interruptores RMH para herramientas. Envíos a todo el país.</div>
     </div>
-    <div><h3>Navegación</h3><button type="button" class="f-link" onclick="irAInicio()">Inicio</button><button type="button" class="f-link" onclick="irAProductos()">Productos</button><button type="button" class="f-link" onclick="irANosotros()">Nosotros</button></div>
-    <div><h3>Contacto</h3><a class="f-link" href="https://wa.me/5491136267009" target="_blank" rel="noopener">WhatsApp: +54 9 11 3626-7009</a><a class="f-link" href="mailto:contacto.carbonkey@gmail.com">contacto.carbonkey@gmail.com</a></div>
-    <div><h3>Legal</h3><a class="f-link" href="privacidad.html">Política de privacidad</a><a class="f-link" href="terminos.html">Términos y condiciones</a></div>
+    <div class="fc"><h3>Navegación</h3><button type="button" onclick="irAInicio()">Inicio</button><button type="button" onclick="irALinea('MONCAR')">Carbones eléctricos</button><button type="button" onclick="irALinea('RMH')">Interruptores eléctricos</button><button type="button" onclick="irANosotros()">Nosotros</button></div>
+    <div class="fc"><h3>Contacto</h3><a href="https://wa.me/5491136267009" target="_blank" rel="noopener">WhatsApp: +54 9 11 3626-7009</a><a href="mailto:contacto.carbonkey@gmail.com">contacto.carbonkey@gmail.com</a></div>
+    <div class="fc"><h3>Legal</h3><a href="privacidad.html">Política de privacidad</a><a href="terminos.html">Términos y condiciones</a></div>
   </div>
-  <div class="wrap f-bot">© 2026 MONCAR RMH — Todos los derechos reservados. Ícono de máquina de coser: Caro Asercion, <a href="https://game-icons.net" target="_blank" rel="noopener">game-icons.net</a> (<a href="https://creativecommons.org/licenses/by/3.0/" target="_blank" rel="noopener">CC BY 3.0</a>).</div>
+  <div class="ft">© 2026 MONCAR RMH — Todos los derechos reservados<div class="ft-cred">Ícono de máquina de coser: Caro Asercion, <a href="https://game-icons.net" target="_blank" rel="noopener">game-icons.net</a> (<a href="https://creativecommons.org/licenses/by/3.0/" target="_blank" rel="noopener">CC BY 3.0</a>)</div></div>
 </footer>
 
 <!-- PEDIDO (panel lateral) -->
 <div class="ov" id="cart-ov" onclick="cerrarCart()" hidden></div>
 <aside class="drawer" id="cart" aria-label="Mi pedido">
-  <div class="dr-head"><h2>Mi pedido</h2><button type="button" class="x" id="cart-close" onclick="cerrarCart()" aria-label="Cerrar pedido"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button></div>
+  <div class="dr-head"><h2>Tu pedido</h2><button type="button" class="x" id="cart-close" onclick="cerrarCart()" aria-label="Cerrar pedido"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button></div>
   <div class="dr-items" id="cart-items"></div>
   <div class="dr-foot" id="dr-foot" hidden>
     <div class="dr-total"><span>Total estimado</span><strong id="cart-total">$0</strong></div>
     <p class="dr-note">Precios de lista. Te confirmamos el pedido y el envío por WhatsApp o email.</p>
-    <button type="button" class="btn btn-wa btn-lg" onclick="pedirPorWA()">{wa_ico} Enviar pedido por WhatsApp</button>
-    <button type="button" class="btn btn-line" onclick="pedirPorEmail()"><i class="fa-solid fa-envelope" aria-hidden="true"></i> Enviar por email</button>
+    <button type="button" class="btn btn-wa btn-lg" onclick="pedirPorWA()">{wa_ico} Pedir por WhatsApp</button>
+    <button type="button" class="btn btn-line" onclick="pedirPorEmail()"><i class="fa-solid fa-envelope" aria-hidden="true"></i> Pedir por email</button>
     <button type="button" class="dr-vaciar" onclick="vaciarCart()">Vaciar pedido</button>
   </div>
 </aside>
