@@ -101,6 +101,23 @@ serio.
 
 ## Diseño
 
+**v3 en producción desde 2026-10-26** (plantilla en `generar_html()` de `generar_sitio_drive.py`,
+CSS y JS en los strings crudos `_CSS` / `_JS`, datos por marcadores `__PRODUCTOS__` etc.). Es el
+diseño de la v1 (Oswald, negro/naranja, logo) con la usabilidad de la v2:
+- Banner: logo + buscador guiado (por marca / por tipo de máquina / por medidas / por modelo).
+- "Nuestras líneas": MONCAR = carbones eléctricos, RMH = interruptores eléctricos. Marca, categoría y
+  medidas de la portada son **de carbones** (fijan la línea MONCAR).
+- Menú "Productos" desplegable (hover en compu, toque en celular) con acceso directo a cada línea;
+  selector de línea grande arriba del catálogo; con RMH se ocultan medidas/marca/terminal.
+- Búsqueda por medidas con tolerancia (±0,3 mm espesor/ancho, ±1,5 mm largo, acepta E/A invertidos);
+  imagen `sitio/medidas-carbon.webp`. El código NO es la búsqueda principal (decisión de Franco: el
+  ferretero no lo sabe).
+- Grilla: 5 por fila en compu (4 en pantallas medianas), **2 por fila en celular con la medida visible**.
+- Al agregar no se abre el carrito: aviso + barra de pedido fija en el celular.
+- Rutas por hash: `#productos/linea/MONCAR|RMH`, `/cat/<cat>`, `/marca/<marca>`, `/medidas/6.3x10x`.
+
+Detalle histórico de la v1 (sigue valiendo para íconos y grillas fijas):
+
 - Tipografía **Oswald** (Google Fonts) para títulos/nav/botones/categorías, **Inter**
   para texto de cuerpo.
 - Paleta: negro (`--black`/`--black2`), grises, blanco, naranja (`--orange: #FF5A00`).
