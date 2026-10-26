@@ -776,6 +776,10 @@ footer{background:var(--black2);border-top:3px solid var(--orange)}
 .chk a{color:var(--orange-txt)}
 .chk.err{color:var(--red)}
 .cm-err{margin-top:12px}
+.btn-google{border-color:var(--border);background:var(--white);color:var(--text);font-family:var(--font-body);font-size:15px;font-weight:600;text-transform:none;letter-spacing:0}
+.btn-google:hover{border-color:#999}
+.cm-o{display:flex;align-items:center;gap:10px;margin:16px 0;color:var(--muted);font-size:13px}
+.cm-o::before,.cm-o::after{content:'';flex:1;height:1px;background:var(--border)}
 .link-in{border:0;background:none;padding:0;font:inherit;font-weight:700;color:var(--orange-txt);text-decoration:underline}
 .cm-dl{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin:8px 0 16px;font-size:14px}
 .cm-dl dt{color:var(--muted)}
@@ -813,7 +817,9 @@ function elegirDestino(localidad){
 // carga, la web sigue andando como catálogo sin cuentas.
 const SB_URL = __SB_URL__, SB_KEY = __SB_KEY__;
 const PROVINCIAS = __PROVINCIAS__;
-const sb = window.supabase ? window.supabase.createClient(SB_URL, SB_KEY) : null;
+// flowType pkce: al volver de Google la sesión llega como ?code= (no en el #,
+// que la web usa para navegar entre páginas).
+const sb = window.supabase ? window.supabase.createClient(SB_URL, SB_KEY, {auth: {flowType: 'pkce'}}) : null;
 let hayPrecios = false;  // sesión con acceso a precios y precios cargados
 let cuenta = null;       // {email, ficha} de la sesión actual (ficha = fila de clientes)
 
@@ -1349,10 +1355,26 @@ async function cargarCuenta(session){
     sb.from('clientes').select('nombre,local,localidad,provincia,whatsapp,estado').eq('user_id', session.user.id).maybeSingle(),
     sb.from('precios_web').select('codigo,precio').range(0, 4999),
   ]);
-  cuenta = {email: session.user.email, ficha: f.data || null};
+  cuenta = {email: session.user.email, ficha: f.data || null, meta: session.user.user_metadata || {}};
   const mapa = {};
   (pr.data || []).forEach(r => { mapa[r.codigo] = r.precio; });
   aplicarPrecios(mapa);
+  // Entró con Google y todavía no cargó sus datos: se los pedimos una vez.
+  if(faltaFicha() && !pidioFicha){ pidioFicha = true; abrirCuenta(); }
+}
+let pidioFicha = false;
+function faltaFicha(){ return !!cuenta && !cuenta.ficha && !hayPrecios; }
+// Vuelta de Google: limpiar ?code= / ?error= de la dirección.
+(function(){
+  const q = new URLSearchParams(location.search);
+  if(!q.has('code') && !q.has('error')) return;
+  if(q.has('error')) setTimeout(() => mostrarToast('No se pudo ingresar con Google. Probá de nuevo.'), 300);
+  setTimeout(() => history.replaceState(null, '', location.pathname + location.hash), 1500);
+})();
+async function entrarConGoogle(){
+  if(!sb) return;
+  const {error} = await sb.auth.signInWithOAuth({provider: 'google', options: {redirectTo: location.origin + location.pathname}});
+  if(error) mostrarToast('No se pudo ingresar con Google. Probá de nuevo.');
 }
 if(sb) sb.auth.onAuthStateChange((ev, session) => {
   const uid = session ? session.user.id : null;
@@ -1369,6 +1391,9 @@ function renderCuentaUI(){
   if(hayPrecios) return;
   av.innerHTML = bloqueada
     ? '<i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i><p>Tu cuenta está suspendida y no muestra precios. Escribinos por WhatsApp y lo vemos.</p>'
+    : faltaFicha()
+    ? '<i class="fa-solid fa-user-pen" aria-hidden="true"></i><p><strong>Te falta un paso.</strong> Completá los datos de tu comercio para ver los precios.</p>'
+      + '<button type="button" class="btn btn-primary" onclick="abrirCuenta()">Completar datos</button>'
     : cuenta
     ? '<i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i><p>Tu usuario no tiene acceso a la lista de precios. Escribinos por WhatsApp.</p>'
     : '<i class="fa-solid fa-lock" aria-hidden="true"></i><p><strong>Precios exclusivos para comercios.</strong> Creá tu cuenta gratis en un minuto y vas a ver los precios al instante.</p>'
@@ -1378,9 +1403,15 @@ function renderCuentaUI(){
 function abrirCuenta(vista){
   focusCuenta = document.activeElement;
   cerrarCart();
+  const completar = faltaFicha();
   $('cm-acceso').hidden = !!cuenta;
-  $('cm-cuenta').hidden = !cuenta;
-  if(cuenta){
+  $('cm-completar').hidden = !completar;
+  $('cm-cuenta').hidden = !cuenta || completar;
+  if(completar){
+    const m = cuenta.meta;
+    if(!$('c-nombre').value) $('c-nombre').value = m.full_name || m.name || '';
+    $('c-email').textContent = cuenta.email;
+  } else if(cuenta){
     const fi = cuenta.ficha;
     const filas = [['Email', cuenta.email]];
     if(fi) filas.push(['Nombre', fi.nombre], ['Local', fi.local], ['Localidad', fi.localidad + ', ' + fi.provincia], ['WhatsApp', fi.whatsapp],
@@ -1391,7 +1422,7 @@ function abrirCuenta(vista){
   }
   $('cmodal').hidden = false;
   document.body.classList.add('lock');
-  setTimeout(() => { const el = cuenta ? $('cm-salir') : $(vista === 'login' ? 'l-email' : 'r-nombre'); if(el) el.focus(); }, 50);
+  setTimeout(() => { const el = completar ? $('c-local') : cuenta ? $('cm-salir') : $(vista === 'login' ? 'l-email' : 'r-nombre'); if(el) el.focus(); }, 50);
 }
 function cerrarCuenta(){
   if($('cmodal').hidden) return;
@@ -1414,37 +1445,70 @@ function msgAuth(e){
   if(m.includes('signup') && (m.includes('not allowed') || m.includes('disabled'))) return 'El registro no está habilitado en este momento. Escribinos por WhatsApp.';
   if((e && e.status === 429) || m.includes('rate limit')) return 'Demasiados intentos. Esperá unos minutos y probá de nuevo.';
   if(m.includes('password')) return 'La contraseña no es válida: usá al menos 8 caracteres.';
+  if(m.includes('ya tiene sus datos')) return 'Tu cuenta ya tiene los datos cargados. Recargá la página.';
+  if(m.includes('provincia') || m.includes('whatsapp') || m.includes('faltan') || m.includes('largos')) return 'Revisá los datos: falta alguno o no es válido.';
   if(m.includes('database error')) return 'No pudimos guardar tus datos. Revisalos y probá de nuevo.';
   return 'No pudimos completar la operación. Probá de nuevo en un rato.';
 }
 function errCuenta(id, txt){ $(id).textContent = txt; $(id).hidden = false; }
 function ocupado(form, si){ const b = form.querySelector('[type=submit]'); b.disabled = si; b.dataset.txt = b.dataset.txt || b.textContent; b.textContent = si ? 'Un momento…' : b.dataset.txt; }
+// Datos del comercio: los usa el registro con email (prefijo r) y completar
+// la ficha después de Google (prefijo c). Misma validación que la base.
+function leerFicha(x){
+  const v = id => $(x+'-'+id).value.trim();
+  const d = {nombre: v('nombre'), local: v('local'), localidad: v('localidad'), provincia: v('provincia'),
+             whatsapp: v('wa').replace(/\D/g, '')};
+  const reglas = [
+    [x+'-nombre', d.nombre, 'Escribí tu nombre.'],
+    [x+'-local', d.local, 'Escribí el nombre del local.'],
+    [x+'-localidad', d.localidad, 'Escribí tu localidad.'],
+    [x+'-provincia', d.provincia, 'Elegí tu provincia.'],
+    [x+'-wa', d.whatsapp.length >= 8 && d.whatsapp.length <= 15, 'Escribí un WhatsApp válido, con código de área.'],
+  ];
+  return {d, reglas};
+}
+function validar(reglas, errId){
+  let primero = null;
+  reglas.forEach(([id, ok, txt]) => {
+    const chk = id.endsWith('-acepto');
+    $(id).closest(chk ? '.chk' : 'input,select').classList.toggle('err', !ok);
+    if(!chk){ if(ok) $(id).removeAttribute('aria-invalid'); else $(id).setAttribute('aria-invalid', 'true'); }
+    if(!ok && !primero) primero = [id, txt];
+  });
+  if(primero){ errCuenta(errId, primero[1]); $(primero[0]).focus(); return false; }
+  $(errId).hidden = true;
+  return true;
+}
+async function completarFicha(ev){
+  ev.preventDefault();
+  const form = ev.target;
+  const {d, reglas} = leerFicha('c');
+  reglas.push(['c-acepto', $('c-acepto').checked, 'Para ver los precios tenés que aceptar la política de privacidad.']);
+  if(!validar(reglas, 'c-err')) return;
+  ocupado(form, true);
+  const {error} = await sb.rpc('completar_ficha_cliente', {p_nombre: d.nombre, p_local: d.local, p_localidad: d.localidad,
+    p_provincia: d.provincia, p_whatsapp: d.whatsapp, p_acepto: true});
+  ocupado(form, false);
+  if(error) return errCuenta('c-err', msgAuth(error));
+  const {data} = await sb.auth.getSession();
+  await cargarCuenta(data.session);
+  form.reset();
+  cerrarCuenta();
+  mostrarToast('¡Listo! Ya ves los precios.');
+}
 async function registrar(ev){
   ev.preventDefault();
   const form = ev.target;
   if(!sb) return errCuenta('r-err', 'No se pudo conectar. Recargá la página y probá de nuevo.');
-  const v = id => $(id).value.trim();
-  const d = {nombre: v('r-nombre'), local: v('r-local'), localidad: v('r-localidad'), provincia: v('r-provincia'),
-             whatsapp: v('r-wa').replace(/\D/g, ''), email: v('r-email'), pass: $('r-pass').value};
-  const reglas = [
-    ['r-nombre', d.nombre, 'Escribí tu nombre.'],
-    ['r-local', d.local, 'Escribí el nombre del local.'],
-    ['r-localidad', d.localidad, 'Escribí tu localidad.'],
-    ['r-provincia', d.provincia, 'Elegí tu provincia.'],
-    ['r-wa', d.whatsapp.length >= 8 && d.whatsapp.length <= 15, 'Escribí un WhatsApp válido, con código de área.'],
+  const {d, reglas} = leerFicha('r');
+  d.email = $('r-email').value.trim();
+  d.pass = $('r-pass').value;
+  reglas.push(
     ['r-email', /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email), 'Escribí un email válido.'],
     ['r-pass', d.pass.length >= 8, 'La contraseña tiene que tener al menos 8 caracteres.'],
     ['r-acepto', $('r-acepto').checked, 'Para crear la cuenta tenés que aceptar la política de privacidad.'],
-  ];
-  let primero = null;
-  reglas.forEach(([id, ok, txt]) => {
-    const el = id === 'r-acepto' ? $('r-acepto').closest('.chk') : $(id);
-    el.classList.toggle('err', !ok);
-    if(id !== 'r-acepto'){ if(ok) $(id).removeAttribute('aria-invalid'); else $(id).setAttribute('aria-invalid', 'true'); }
-    if(!ok && !primero) primero = [id, txt];
-  });
-  if(primero){ errCuenta('r-err', primero[1]); $(primero[0]).focus(); return; }
-  $('r-err').hidden = true;
+  );
+  if(!validar(reglas, 'r-err')) return;
   ocupado(form, true);
   const {data, error} = await sb.auth.signUp({email: d.email, password: d.pass, options: {data: {
     tipo: 'cliente', nombre: d.nombre, local: d.local, localidad: d.localidad, provincia: d.provincia,
@@ -1485,7 +1549,7 @@ document.addEventListener('keydown', e => {
   else cerrarFiltros();
 });
 
-$('r-provincia').innerHTML = '<option value="">Elegí…</option>' + PROVINCIAS.map(p => `<option>${esc(p)}</option>`).join('');
+['r-provincia','c-provincia'].forEach(id => { $(id).innerHTML = '<option value="">Elegí…</option>' + PROVINCIAS.map(p => `<option>${esc(p)}</option>`).join(''); });
 aplicarPrecios(null);  // arranca sin precios; si hay sesión, onAuthStateChange los carga
 actualizarConteos();
 if(location.hash) aplicarHash(); else { mostrarPagina('inicio'); filtrar(); }
@@ -1898,6 +1962,8 @@ def generar_html(productos, env):
     <div id="cm-acceso">
       <h2 id="cm-title">Precios para comercios</h2>
       <p class="modal-sub">Creá tu cuenta gratis y ves los precios al instante. Es para ferreterías, talleres, casas de repuestos y comercios del rubro.</p>
+      <button type="button" class="btn btn-google btn-block" onclick="entrarConGoogle()"><svg viewBox="0 0 48 48" width="20" height="20" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg> Continuar con Google</button>
+      <div class="cm-o"><span>o con tu email</span></div>
       <div class="cm-tabs" role="tablist">
         <button type="button" role="tab" id="tab-registro" aria-selected="true" onclick="vistaCuenta('registro')">Crear cuenta</button>
         <button type="button" role="tab" id="tab-login" aria-selected="false" onclick="vistaCuenta('login')">Ya tengo cuenta</button>
@@ -1930,6 +1996,23 @@ def generar_html(productos, env):
         </div>
       </form>
     </div>
+    <form id="cm-completar" onsubmit="completarFicha(event)" novalidate hidden>
+      <h2>Completá tus datos</h2>
+      <p class="modal-sub">Ingresaste como <strong id="c-email"></strong>. Un solo paso más y ves los precios.</p>
+      <div class="fg"><label for="c-nombre">Tu nombre</label><input type="text" id="c-nombre" class="inp" autocomplete="name" maxlength="120"></div>
+      <div class="fg"><label for="c-local">Nombre del local</label><input type="text" id="c-local" class="inp" autocomplete="organization" maxlength="120" placeholder="Ferretería, taller, casa de repuestos…"></div>
+      <div class="fg-2">
+        <div class="fg"><label for="c-localidad">Localidad</label><input type="text" id="c-localidad" class="inp" autocomplete="address-level2" maxlength="120"></div>
+        <div class="fg"><label for="c-provincia">Provincia</label><select id="c-provincia" class="inp" autocomplete="address-level1"></select></div>
+      </div>
+      <div class="fg"><label for="c-wa">WhatsApp</label><input type="tel" id="c-wa" class="inp" autocomplete="tel" inputmode="tel" placeholder="Ej: 11 3626-7009"></div>
+      <label class="chk"><input type="checkbox" id="c-acepto"><span>Acepto la <a href="privacidad.html" target="_blank">política de privacidad</a>: MONCAR RMH guarda estos datos para darte acceso a los precios y atender tus pedidos.</span></label>
+      <p class="fg-err cm-err" id="c-err" role="alert" hidden></p>
+      <div class="modal-acts">
+        <button type="button" class="btn btn-line" onclick="salir()">Salir</button>
+        <button type="submit" class="btn btn-primary">Ver precios</button>
+      </div>
+    </form>
     <div id="cm-cuenta" hidden>
       <h2>Mi cuenta</h2>
       <dl class="cm-dl" id="cm-datos"></dl>
