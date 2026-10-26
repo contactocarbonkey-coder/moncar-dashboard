@@ -725,18 +725,21 @@ footer{background:var(--black2);border-top:3px solid var(--orange)}
   .orden span{display:none}
   .chips{padding:8px 12px 0}
   .grid-wrap{padding:12px 8px 32px}
-  /* 3 productos por fila: tarjeta compacta (la cantidad se ajusta en el pedido) */
-  .grid{grid-template-columns:repeat(3,1fr);gap:6px}
-  .card-img{height:96px;padding:6px}
-  .card-body{padding:7px;gap:2px}
-  .card-badges,.card-qty,.card-dims{display:none}
-  .card-cod{font-size:12px;margin-top:0}
-  .card-marca{font-size:12px}
-  .card-desc{font-size:12px;line-height:1.3}
-  .tag{font-size:10px;padding:1px 4px}
-  .card-precio{font-size:16px}
-  .btn-add{min-height:38px;margin-top:5px;font-size:13px;padding:0 4px}
-  .card-encart{font-size:11px}
+  /* 2 productos por fila; la medida del carbón queda siempre visible */
+  .grid{grid-template-columns:repeat(2,1fr);gap:8px}
+  .card-img{height:120px;padding:8px}
+  .card-body{padding:9px;gap:3px}
+  .card-badges{display:none}
+  .card-cod{font-size:13px;margin-top:0}
+  .card-marca{font-size:14px}
+  .card-desc{font-size:13px;line-height:1.3}
+  .card-dims{font-size:13px;font-weight:600;color:var(--text)}
+  .card-dims i{color:var(--orange)}
+  .card-precio{font-size:18px}
+  .card-qty{gap:4px}
+  .card-qty button{width:36px;height:36px}
+  .card-qty input{flex:1;min-width:0;height:36px}
+  .btn-add{min-height:42px;margin-top:6px}
   .fi{text-align:center}
   .f-logo{justify-content:center}
   .fc a,.fc button{text-align:center;width:100%}
@@ -749,7 +752,7 @@ footer{background:var(--black2);border-top:3px solid var(--orange)}
 }
 @media(max-width:380px){
   .nav-logo{font-size:18px}
-  .card-img{height:84px}
+  .card-img{height:110px}
 }
 @media(prefers-reduced-motion:reduce){
   html{scroll-behavior:auto}
