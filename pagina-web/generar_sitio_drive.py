@@ -343,22 +343,6 @@ MARCA_LABEL = {
     'De Walt':        'DeWalt',
 }
 
-_SVG_MEDIDAS = '''<svg viewBox="0 0 250 232" role="img" aria-label="Cómo medir un carbón: espesor, ancho y largo">
-<path d="M88 60 C88 40 88 34 88 22" stroke="#8a908d" stroke-width="3" fill="none"/>
-<rect x="80" y="10" width="16" height="12" fill="#fff" stroke="#111" stroke-width="1.5"/>
-<rect x="48" y="60" width="80" height="120" rx="3" fill="#3b3a40" stroke="#111" stroke-width="1.5"/>
-<rect x="176" y="60" width="34" height="120" rx="3" fill="#5a5960" stroke="#111" stroke-width="1.5"/>
-<g stroke="#ff5a00" stroke-width="1.5">
-<line x1="48" y1="198" x2="128" y2="198"/><line x1="48" y1="192" x2="48" y2="204"/><line x1="128" y1="192" x2="128" y2="204"/>
-<line x1="176" y1="198" x2="210" y2="198"/><line x1="176" y1="192" x2="176" y2="204"/><line x1="210" y1="192" x2="210" y2="204"/>
-<line x1="30" y1="60" x2="30" y2="180"/><line x1="24" y1="60" x2="36" y2="60"/><line x1="24" y1="180" x2="36" y2="180"/>
-</g>
-<g font-family="Inter,sans-serif" font-size="13" font-weight="600" fill="#111" text-anchor="middle">
-<text x="88" y="222">Ancho</text><text x="193" y="222">Espesor</text>
-<text x="0" y="0" transform="translate(16 120) rotate(-90)">Largo</text>
-</g>
-</svg>'''
-
 _CSS = r'''
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -496,11 +480,12 @@ section[id^="sec-"]{scroll-margin-top:calc(var(--head-total) + 8px)}
 .cat-count{display:block;font-size:12px;margin-top:3px;color:var(--muted)}
 
 /* Medidas */
-.med-box{display:grid;grid-template-columns:320px 1fr;overflow:hidden;border:1px solid var(--border);border-radius:10px;background:var(--white)}
+.med-box{display:grid;grid-template-columns:380px 1fr;overflow:hidden;border:1px solid var(--border);border-radius:10px;background:var(--white)}
 .med-fig{display:flex;align-items:center;justify-content:center;padding:28px;border-right:1px solid var(--border);background:#fafafa}
-.med-fig svg{width:100%;max-width:250px;height:auto}
+.med-fig{background:#fff}
+.med-fig img{display:block;width:100%;max-width:340px;height:auto}
 .med-form{padding:32px}
-.med-fields{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px}
+.med-fields{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px;align-items:end}
 .field label{display:block;font-size:15px;font-weight:700;margin-bottom:6px}
 .field small{font-size:13px;font-weight:400;color:var(--muted)}
 .med-help{font-size:15px;color:var(--muted);margin-bottom:20px;max-width:560px}
@@ -725,7 +710,7 @@ footer{background:var(--black2);border-top:3px solid var(--orange)}
   .lc-img{height:100px}
   .med-box{grid-template-columns:1fr}
   .med-fig{border-right:0;border-bottom:1px solid var(--border);padding:16px}
-  .med-fig svg{max-width:200px}
+  .med-fig img{max-width:300px}
   .med-form{padding:20px}
   .med-fields{gap:8px}
   .med-form .btn,.ayuda-in .btn{width:100%}
@@ -1511,7 +1496,7 @@ def generar_html(productos):
         <div><span class="sec-tag"><i class="fa-solid fa-bolt" aria-hidden="true"></i> Línea MONCAR · Carbones</span><h2>Carbones por medidas</h2><p>¿Tenés el carbón viejo en la mano? Medilo y encontrá el equivalente.</p></div>
       </div>
       <div class="med-box">
-        <div class="med-fig">{_SVG_MEDIDAS}</div>
+        <div class="med-fig"><img src="medidas-carbon.webp" width="585" height="437" alt="Cómo medir un carbón: espesor, ancho y largo (espesor × ancho × largo)" loading="lazy"></div>
         <form class="med-form" onsubmit="buscarMedidaHome(event)" novalidate>
           <div class="med-fields">
             <div class="field"><label for="h-esp">Espesor</label><div class="inp-unit"><input id="h-esp" class="inp" inputmode="decimal" placeholder="6,3" autocomplete="off"></div></div>
