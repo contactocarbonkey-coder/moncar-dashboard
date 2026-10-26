@@ -23,7 +23,7 @@ DIR      = os.path.dirname(os.path.abspath(__file__))
 OUT_DIR  = os.path.join(DIR, 'sitio')
 OUT_PATH = os.path.join(OUT_DIR, 'index.html')
 IMG_DIR  = os.path.join(OUT_DIR, 'imagenes')
-LP_DIM_PATH = os.path.join(os.path.dirname(DIR), 'LP', 'LP 10 CARBONES 01.04.2026.xlsx')
+LP_DIM_PATH = os.path.join(os.path.dirname(os.path.dirname(DIR)), 'LP', 'LP 10 CARBONES 01.04.2026.xlsx')
 
 os.makedirs(OUT_DIR, exist_ok=True)
 os.makedirs(IMG_DIR, exist_ok=True)

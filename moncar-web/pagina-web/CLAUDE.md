@@ -1,7 +1,12 @@
 # Página web / catálogo MONCAR RMH
 
-**Reactivado el 2026-09-22** (había quedado pausado el 2026-09-10, ver `../HISTORIAL.md`).
+**Reactivado el 2026-09-22** (había quedado pausado el 2026-09-10, ver `../../HISTORIAL.md`).
 **En vivo desde el 2026-09-28** en `https://moncar-rmh.com.ar`.
+
+**Ubicación (desde 2026-10-26):** `proyectos/moncar/moncar-web/pagina-web/`. Al lado está
+`../backend-web/` (el panel, repo `moncar-panel`), que va a ser el backend de esta web:
+el objetivo es que el generador lea productos, categorías y textos de la base del panel
+(todavía no está conectado). El generador se versiona en el repo raíz (`moncar-dashboard`).
 
 ## Qué es
 
@@ -19,8 +24,8 @@ python generar_sitio_drive.py   →   sitio/index.html
 ```
 
 Lee precios/stock en vivo de los mismos 3 Google Sheets que usa el Dashboard (ver
-`../CLAUDE.md` para los IDs — son los mismos). Las dimensiones de los carbones MONCAR
-(espesor/ancho/largo/terminal) todavía salen de `../LP/LP 10 CARBONES 01.04.2026.xlsx`
+`../../CLAUDE.md` para los IDs — son los mismos). Las dimensiones de los carbones MONCAR
+(espesor/ancho/largo/terminal) todavía salen de `../../LP/LP 10 CARBONES 01.04.2026.xlsx`
 porque ese detalle no está migrado a Sheets (pendiente general del proyecto); si ese
 archivo no está o cambia de formato, el sitio se genera igual, solo sin esos filtros.
 
@@ -45,7 +50,7 @@ script) usan el ícono SVG genérico de respaldo (`SVG_MC`/`SVG_RMH` en el JS).
 ## Deploy
 
 `sitio/` es un **repo git propio** (rama `main`), separado del repo de este proyecto —
-ver `.gitignore` del proyecto raíz (`pagina-web/sitio/` está excluido a propósito,
+ver `.gitignore` del proyecto raíz (`moncar-web/pagina-web/sitio/` está excluido a propósito,
 mismo criterio que `remitos-app/`). Conectado a
 `github.com/contactocarbonkey-coder/moncar-rmh-web` (cuenta de `contacto.carbonkey@gmail.com`
 = Andi, no la de Franco) → Vercel detecta cada push a `main` y redespliega solo, sin

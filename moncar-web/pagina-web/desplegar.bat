@@ -18,7 +18,7 @@ echo [2/3] Subiendo cambios a GitHub...
 cd sitio
 if not exist ".git" (
     echo ERROR: la carpeta "sitio" todavia no es un repo git conectado a GitHub/Vercel.
-    echo        Hay que configurarlo una vez ^(ver pagina-web\CLAUDE.md o pedirselo a Claude^).
+    echo        Hay que configurarlo una vez ^(ver moncar-web\pagina-web\CLAUDE.md o pedirselo a Claude^).
     pause
     exit /b 1
 )

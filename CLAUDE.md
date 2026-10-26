@@ -11,14 +11,17 @@ router hacia los otros dos.
 |---|---|---|---|---|
 | **Dashboard** (este) | Activo | raíz + `.claude/` | `abrir_dashboard_drive.bat` | este archivo → `HISTORIAL.md`, `REFERENCIA.md` |
 | **App remitos** | Activo | `remitos-app/` (repo git propio) | Vercel / `npm run dev` | `remitos-app/CLAUDE.md` |
-| **Página web / catálogo** | Activo, en vivo en `moncar-rmh.com.ar` desde 2026-09-28 | `pagina-web/` | ver `pagina-web/CLAUDE.md` | `pagina-web/CLAUDE.md` |
-| **Web multi-zona** (Next.js + Supabase) | En desarrollo desde 2026-10-05 — solo panel admin, local | `moncar-web/` (git propio) | `npm run dev` | `moncar-web/CLAUDE.md` |
+| **Página web / catálogo** | Activo, en vivo en `moncar-rmh.com.ar` desde 2026-09-28 | `moncar-web/pagina-web/` (generador versionado acá; `sitio/` repo propio) | ver `moncar-web/pagina-web/CLAUDE.md` | `moncar-web/pagina-web/CLAUDE.md` |
+| **Panel / backend de la web** (Next.js + Supabase) | En desarrollo desde 2026-10-05 — panel admin en moncar-panel.vercel.app | `moncar-web/backend-web/` (repo `moncar-panel`, gitignored acá) | `npm run dev` | `moncar-web/backend-web/CLAUDE.md` |
 | **ERP zona Juli** (Next.js + Supabase propio `dbidxedrwlwbbwcxnxza`) | En prueba desde 2026-10-10, publicado en **moncar-erp.vercel.app** — interfaz del dashboard + Movimientos, Costos, Administración; espejo de los Sheets hasta el corte | `moncar-erp/` (repo `contactocarbonkey-coder/moncar-erp`, gitignored acá) | Vercel / `moncar-erp/abrir_erp.bat` | `moncar-erp/CLAUDE.md` |
 
 Si la tarea es de **remitos**, leer `remitos-app/CLAUDE.md` primero — nada de eso vive
-acá. Si la tarea es de la **página web / catálogo** actual, leer `pagina-web/CLAUDE.md`
-primero — nada de eso vive acá tampoco. La **web multi-zona** es la propuesta nueva para
-las 6 zonas de la empresa (no solo la de Juli): su doc está en `moncar-web/CLAUDE.md`.
+acá. Todo lo de la **web** vive en `moncar-web/` (carpeta contenedora, sin repo propio,
+desde 2026-10-26): `pagina-web/` = el sitio público actual (leer su `CLAUDE.md` primero) y
+`backend-web/` = el panel. **Objetivo del panel (decisión de Franco 2026-10-26):** ser el
+backend de moncar-rmh.com.ar — agregar/editar/borrar productos y categorías y editar los
+textos de la web. Todavía no está conectado: el generador de la web lee Sheets y PDFs, no
+la base del panel (pendiente P2).
 
 ---
 
@@ -76,6 +79,9 @@ claude MONCAR RMH/
 ├── LP/LP 10 CARBONES 01.04.2026.xlsx  ← lista de precios, NO integrada al dashboard (pendiente)
 ├── setup_stock_caba.gs              ← Apps Script hoja STOCK CABA de Andi — CONFIRMAR si sigue vivo
 ├── remitos-app/                     ← proyecto hermano, repo git propio (ver su CLAUDE.md)
+├── moncar-web/                      ← todo lo de la web (carpeta contenedora)
+│   ├── pagina-web/                  ← generador del sitio público (versionado acá); sitio/ = repo moncar-rmh-web
+│   └── backend-web/                 ← panel Next.js + Supabase, repo moncar-panel (gitignored acá)
 └── _legacy/                         ← archivos sin uso confirmado (ver _legacy/LEEME.txt)
 ```
 
