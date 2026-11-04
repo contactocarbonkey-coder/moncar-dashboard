@@ -104,7 +104,7 @@ argentino (`"10.298,15"` → `10298.15`, función `n()`); fechas `dd/mm/yyyy` �
 (`parse_fecha()`). Google calcula las fórmulas server-side, así que el CSV siempre trae
 valores ya resueltos.
 
-**IDs de los Google Sheets** (owner `contacto.carbonkey@gmail.com` = cuenta de Andi, no la de Franco):
+**IDs de los Google Sheets** (owner `contacto.carbonkey@gmail.com` = cuenta de trabajo de Franco para MONCAR; Andi usa otro mail):
 
 | Archivo | ID | Hojas |
 |---|---|---|
