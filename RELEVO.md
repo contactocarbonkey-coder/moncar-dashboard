@@ -1,48 +1,43 @@
-# RELEVO — MONCAR RMH (web pública + panel)
-_Actualizado: 2026-11-03 · Rama: b2b-login (repo raíz)_
+# RELEVO — MONCAR RMH (raíz: dashboard + router de proyectos)
+_Actualizado: 2026-11-06 · Rama: b2b-login (repo raíz)_
 Backlog completo: C:/Users/franc/Cerebro/wiki/proyectos/moncar-rmh/moncar-rmh-pendientes.md
 
 ## Para arrancar la próxima sesión
-Última sesión (2026-11-03) fue la planilla Rutas CABA de Andi, fuera de este repo (Google Sheets `1HpGsvXlZDHtEMS9iMyKFAYI9GN8pDbTeFs5vq0IXUG4`,
-detalle en el Cerebro: `wiki/conceptos/moncar-rutas-caba-sheet.md`). Quedó para Franco: recuperar la hoja Calendario del
-historial de versiones y compartirla a Andi (Editor) y Juli (Comentador).
-De antes: Preguntarle a Franco cómo salió la reunión del 29/10 con los jefes de zona. Si aceptaron: crear las cuentas de
-la empresa (GitHub/Vercel/Supabase/dominio) y transferir. Las respuestas sobre marcas por zona cambian la etapa 3.
-Sigue en pie lo de la sesión anterior: habilitar registro y Google en Supabase y pasar `b2b-login` a main (P1).
+Preguntarle a Franco si revisó la sección **Visitas** de remitos-app (moncar-rmh-remitos.vercel.app → menú, solo Andi + admin).
+Si anda: apagar la app separada `moncar-visitas` (borrar el proyecto en Vercel, archivar el repo
+`contactocarbonkey-coder/moncar-visitas`, la carpeta `moncar-visitas/` puede quedar) y borrar de la planilla lo que haya cargado de prueba.
 
 ## Objetivo de la última sesión
-Rearmar la copia de Rutas CABA (tabla única Locales, dashboard, bloqueos para Andi/Juli) — cumplido.
+Herramienta para que Andi cargue visitas a ferreterías desde el celular a la planilla Rutas CABA — cumplido
+(primero app aparte, después sección de remitos-app; en producción, remitos main d4c32db).
 
 ## Estado del repo
-- Cambios sin commitear: `moncar-web/propuesta/` (sin trackear: propuesta, descargable y machete). El machete
-  es privado de Franco: decidir si se versiona o se agrega al .gitignore.
-- `CLAUDE.md`: corregido que contacto.carbonkey@gmail.com es cuenta de trabajo de Franco (no de Andi); sin commitear.
-- Último commit: 0ea3338 Relevo de la sesión 2026-10-28 (propuesta web jefes de zona)
-- Links: propuesta https://claude.ai/artifact/H1hQ3Fxr5sTwhc9gLmNuts · machete https://claude.ai/artifact/4GgdU4AxJ8jhxtRhVCwNdu
+- Cambios sin commitear: `.gitignore` (ignora `moncar-visitas/`), `CLAUDE.md` (fila de la app de visitas en el router),
+  `.claude/launch.json` (nuevo: levantar moncar-visitas en :3010 y remitos-app en :3011 desde el panel de vista previa),
+  `moncar-web/propuesta/` (de sesiones anteriores, sin decidir).
+- Último commit: eea9df8 CLAUDE.md: contacto.carbonkey es la cuenta de trabajo de Franco, no de Andi
+- remitos-app (repo propio): `main` = d4c32db con Visitas; rama `visitas-andi` ya mergeada.
 
 ## Decisiones pendientes (Franco)
-- Lo que salga de la reunión: marcas que ve cada zona, mapa zona-localidades, listas por zona, quién aprueba y quién paga.
-- CAPTCHA (Turnstile) antes de abrir el registro con email.
-- De dónde sale el catálogo (panel) vs los precios (ERP) cuando se conecte la web con el panel.
+- Revisar Visitas y dar el OK para apagar moncar-visitas.
+- Qué hacer con `moncar-web/propuesta/` (versionar o ignorar; el machete es privado).
 
 ## Comandos útiles
-- Regenerar el descargable de la propuesta: envolver `propuesta-web-moncar.html` con doctype/head/body (el fuente del
-  artifact no lo tiene); o editar los dos archivos con el mismo cambio.
-- Generar y subir precios: `python moncar-web/pagina-web/generar_sitio_drive.py` (`--sin-subir-precios` para no tocar Supabase).
-- Migraciones del panel: desde `moncar-web/backend-web`: `npm run migrar`.
-- Prueba de permisos de clientes: `node scripts/probar-clientes-web.mjs`.
+- Planilla Rutas CABA: `1HpGsvXlZDHtEMS9iMyKFAYI9GN8pDbTeFs5vq0IXUG4` (detalle en Cerebro `moncar-rutas-caba-sheet`).
+- Probar la lectura de Visitas desde remitos sin la app: script descartable en `remitos-app/scripts/_check-tmp.ts`
+  que importe `leerLocales` de `src/lib/visitas.ts` (con dotenv `.env.local`), `npx tsx`, borrarlo.
+- `git push` colgado: `git -c credential.helper= -c "credential.helper=!gh auth git-credential" push ...`
 
 ## Trampas / no hacer
-- Sheets por API: la planilla Rutas CABA está en locale es_ES (fórmulas con `;`); las tablas de Sheets no aceptan `setDataValidation`.
-- Propuesta: no mencionar que Juli no paga; precio solo en totales ($1.050.000 + $600.000 = $1.650.000).
-- Al republicar un artifact después de compactar, pasar `url` del original o se crea un link nuevo.
-- Publicar la web B2B en orden: registro habilitado en Supabase → generar con subida de precios → 3 ramas a main.
-- Los precios NO van en el HTML: solo en `precios_web` (RLS).
-- La plantilla de la web vive en el generador: no editar `sitio/index.html` a mano.
+- Visitas nunca escribe las columnas N:O de Locales (fórmulas MAP). La tabla llega hasta la fila 600: la cuenta de
+  servicio no puede agrandarla (choca con las protecciones); si se llena, agrandarla desde la cuenta de Franco.
+- Repos nuevos con Vercel: `git config user.email contacto.carbonkey@gmail.com` ANTES del primer commit (si no, deploy "Blocked").
+- No leer ni mostrar PINes/claves de `.env.local` (el permiso automático lo bloquea, y está bien).
+- Sheets por API: locale es_ES (fórmulas con `;`); las tablas no aceptan `setDataValidation`.
 
 ## Historial
+- 2026-11-06: visitas de Andi a Rutas CABA → app moncar-visitas y después sección Visitas en remitos-app (producción).
 - 2026-11-03: planilla Rutas CABA de Andi rearmada (Locales + Dashboard + bloqueos), en Google Sheets.
 - 2026-10-28: propuesta web para los jefes de zona ($1.650.000) + machete de preguntas, en moncar-web/propuesta/.
 - 2026-10-27: web B2B en rama b2b-login (cuentas email + Google, pantalla Clientes, migraciones 0003/0004); MAT12 analizada.
 - 2026-10-26: carpetas de la web agrupadas en moncar-web/ (backend-web + pagina-web); panel definido como backend.
-- 2026-10-26: web v3 (diseño v1 + usabilidad v2) en producción; ramas rediseno / rediseno-web mergeadas.
