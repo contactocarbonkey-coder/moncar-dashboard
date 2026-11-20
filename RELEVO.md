@@ -1,19 +1,19 @@
 # RELEVO — MONCAR RMH (raíz: dashboard + router de proyectos)
-_Actualizado: 2026-11-19 · Rama: b2b-login (repo raíz) · remitos-app en main 693c801_
+_Actualizado: 2026-11-20 · Rama: b2b-login (repo raíz) · remitos-app en rama visitas-por-vendedor (otra sesión)_
 Backlog completo: C:/Users/franc/Cerebro/wiki/proyectos/moncar-rmh/moncar-rmh-pendientes.md
 
 ## Para arrancar la próxima sesión
-Preguntarle a Franco si transfirió la planilla PEDIDO LLAVES 2027 a contacto.carbonkey, tocó "Permitir acceso" de las fotos
-y la compartió con la familia. Después seguir con Visitas: cómo le fue a Andi en su celu y apagar `moncar-visitas`.
+P1 nuevo (2026-11-20): en **remitos-app**, mostrar el stock disponible al lado de cada código al cargar un remito,
+solo para el usuario admin (Franco). Pendientes de antes: PEDIDO LLAVES 2027 (transferir y compartir) y apagar `moncar-visitas`.
 
 ## Objetivo de la última sesión
-Google Sheets del pedido de llaves (interruptores RM) 2027 desde `Descargas/NUEVO PEDIDO LLAVES  2027.xlsx`: una hoja por
-familiar (Fede, Luvi, Juli, Mapi, Naza) y Pedido total bloqueada que suma — cumplido.
-Planilla: `1ZC_Ykcks7lWkpD21di3cVAFbkHO5R4u1sDhbVzCqrFk` (hoy dueña la cuenta personal; contacto.carbonkey es editora).
+Carpeta `logos/` + ficha completa del producto en el ERP (detalle en `moncar-erp/RELEVO.md`) — cumplido, en producción.
 
 ## Estado del repo
-- Repo raíz, cambios sin commitear (de sesiones anteriores, no de esta): `.gitignore`, `CLAUDE.md`, `.claude/launch.json`,
-  `logos/`, `moncar-web/propuesta/`. Esta sesión no tocó código.
+- Repo raíz (rama b2b-login), sin commitear: `logos/` (esta sesión: logos e imágenes de marca renombrados + LEEME.txt),
+  `.claude/launch.json` (esta sesión sumó "erp-vista-local" en :3199), y de sesiones anteriores `.gitignore`, `CLAUDE.md`,
+  `moncar-web/propuesta/`, `moncar-web/pagina-web/extraer_imagenes_rmh.py` (no lo tocó esta sesión).
+- remitos-app está en la rama `visitas-por-vendedor` (otra sesión, falta pasar a main): crear la rama nueva desde `main`.
 
 ## Decisiones pendientes (Franco)
 - Transferir la propiedad de PEDIDO LLAVES 2027 a contacto.carbonkey (Compartir → Transferir propiedad) y aceptarla.
@@ -34,8 +34,8 @@ Planilla: `1ZC_Ykcks7lWkpD21di3cVAFbkHO5R4u1sDhbVzCqrFk` (hoy dueña la cuenta p
 - No leer ni mostrar PINes/claves de `.env.local`.
 
 ## Historial
+- 2026-11-20: carpeta logos/ y ficha completa del producto en el ERP (0048, producción); decidido el stock en remitos-app solo admin.
 - 2026-11-19: planilla Google Sheets PEDIDO LLAVES 2027 (hoja por familiar + Pedido total bloqueada, fotos de la web).
 - 2026-11-17: Visitas de Andi: inicio con resumen, zona con sugerencias, ficha con contacto y notas, navegación (producción).
 - 2026-11-06: visitas de Andi a Rutas CABA → app moncar-visitas y después sección Visitas en remitos-app (producción).
 - 2026-11-03: planilla Rutas CABA de Andi rearmada (Locales + Dashboard + bloqueos), en Google Sheets.
-- 2026-10-28: propuesta web para los jefes de zona ($1.650.000) + machete de preguntas, en moncar-web/propuesta/.
